@@ -75,6 +75,16 @@ class PillarLibraryAcceptanceSpec extends FeatureSpec with GivenWhenThen with Be
       assertEmptyAppliedMigrationsTable()
     }
 
+    scenario("initialize a non-existent keyspace using an open session") {
+      Given("a non-existent keyspace")
+
+      When("the migrator initializes the keyspace using an open sessoin")
+      migrator.initialize(session, keyspaceName, ReplicationOptions.default)
+
+      Then("the keyspace contains a applied_migrations column family")
+      assertEmptyAppliedMigrationsTable()
+    }
+
     scenario("initialize an existing keyspace without a applied_migrations column family") {
       Given("an existing keyspace")
       session.execute("CREATE KEYSPACE %s WITH replication = {'class': 'SimpleStrategy', 'replication_factor' : 1}".format(keyspaceName))
@@ -113,6 +123,17 @@ class PillarLibraryAcceptanceSpec extends FeatureSpec with GivenWhenThen with Be
       assertKeyspaceDoesNotExist()
     }
 
+    scenario("destroy a keyspace using an open session") {
+      Given("an existing keyspace")
+      migrator.initialize(dataStore)
+
+      When("the migrator destroys the keyspace using an open session")
+      migrator.destroy(session, keyspaceName)
+
+      Then("the keyspace no longer exists")
+      assertKeyspaceDoesNotExist()
+    }
+
     scenario("destroy a bad keyspace") {
       Given("a datastore with a non-existing keyspace")
 
@@ -137,6 +158,29 @@ class PillarLibraryAcceptanceSpec extends FeatureSpec with GivenWhenThen with Be
 
       When("the migrator migrates the schema")
       migrator.migrate(dataStore)
+
+      Then("the keyspace contains the events table")
+      session.execute(QueryBuilder.select().from(keyspaceName, "events")).all().size() should equal(0)
+
+      And("the keyspace contains the views table")
+      session.execute(QueryBuilder.select().from(keyspaceName, "views")).all().size() should equal(0)
+
+      And("the applied_migrations table records the migrations")
+      session.execute(QueryBuilder.select().from(keyspaceName, "applied_migrations")).all().size() should equal(4)
+    }
+
+    scenario("apply migrations using an open session") {
+      Given("an initialized, empty, keyspace")
+      migrator.initialize(dataStore)
+
+      And("an open session logged in to that keyspace")
+      val keyspaceSession = cluster.connect(keyspaceName)
+
+      And("a migration that creates an events table")
+      And("a migration that creates a views table")
+
+      When("the migrator migrates the schema using the logged in session")
+      migrator.migrate(keyspaceSession, None)
 
       Then("the keyspace contains the events table")
       session.execute(QueryBuilder.select().from(keyspaceName, "events")).all().size() should equal(0)
