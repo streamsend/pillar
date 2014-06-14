@@ -5,32 +5,37 @@ import com.datastax.driver.core.{Session, Cluster}
 import com.datastax.driver.core.exceptions.AlreadyExistsException
 
 class CassandraMigrator(registry: Registry) extends Migrator {
-  def migrate(dataStore: DataStore, dateRestriction: Option[Date] = None) {
-    val cluster = Cluster.builder().addContactPoint(dataStore.seedAddress).build()
-    val session = cluster.connect(dataStore.keyspace)
+  override def migrate(dataStore: DataStore, dateRestriction: Option[Date] = None) {
+    withCluster(dataStore) { cluster =>
+      migrate(cluster.connect(dataStore.keyspace), dateRestriction)
+    }
+  }
+
+  override def migrate(session: Session, dateRestriction: Option[Date]) {
     val appliedMigrations = AppliedMigrations(session, registry)
 
     selectMigrationsToReverse(dateRestriction, appliedMigrations).foreach(_.executeDownStatement(session))
     selectMigrationsToApply(dateRestriction, appliedMigrations).foreach(_.executeUpStatement(session))
-
-    cluster.close
   }
 
-  def initialize(dataStore: DataStore, replicationOptions: ReplicationOptions = ReplicationOptions.default) {
-    val cluster = Cluster.builder().addContactPoint(dataStore.seedAddress).build()
-    val session = cluster.connect()
-    executeIdempotentCommand(session, "CREATE KEYSPACE %s WITH replication = %s".format(dataStore.keyspace, replicationOptions.toString()))
+  override def initialize(dataStore: DataStore, replicationOptions: ReplicationOptions = ReplicationOptions.default) {
+    withCluster(dataStore) { cluster =>
+      initialize(cluster.connect(), dataStore.keyspace, replicationOptions)
+    }
+  }
+
+  override def initialize(session: Session, keyspace: String, replicationOptions: ReplicationOptions) {
+    executeIdempotentCommand(session, s"CREATE KEYSPACE $keyspace WITH replication = $replicationOptions")
     executeIdempotentCommand(session,
-      """
-        | CREATE TABLE %s.applied_migrations (
+      s"""
+        | CREATE TABLE $keyspace.applied_migrations (
         |   authored_at timestamp,
         |   description text,
         |   applied_at timestamp,
         |   PRIMARY KEY (authored_at, description)
         |  )
-      """.stripMargin.format(dataStore.keyspace)
+      """.stripMargin
     )
-    cluster.close
   }
 
   private def executeIdempotentCommand(session: Session, statement: String) {
@@ -41,10 +46,14 @@ class CassandraMigrator(registry: Registry) extends Migrator {
     }
   }
 
-  def destroy(dataStore: DataStore) {
-    val cluster = Cluster.builder().addContactPoint(dataStore.seedAddress).build()
-    val session = cluster.connect()
-    session.execute("DROP KEYSPACE %s".format(dataStore.keyspace))
+  override def destroy(dataStore: DataStore) {
+    withCluster(dataStore) { cluster =>
+      destroy(cluster.connect(), dataStore.keyspace)
+    }
+  }
+
+  override def destroy(session: Session, keyspace: String) {
+    session.execute(s"DROP KEYSPACE $keyspace")
   }
 
   private def selectMigrationsToApply(dateRestriction: Option[Date], appliedMigrations: AppliedMigrations): Seq[Migration] = {
@@ -60,4 +69,14 @@ class CassandraMigrator(registry: Registry) extends Migrator {
       case Some(cutOff) => appliedMigrations.authoredAfter(cutOff)
     }).sortBy(_.authoredAt).reverse
   }
+
+  private def withCluster(dataStore: DataStore)(block: Cluster => Unit) {
+    val cluster = Cluster.builder().addContactPoint(dataStore.seedAddress).build()
+    try {
+      block(cluster)
+    } finally {
+      cluster.close
+    }
+  }
+
 }
