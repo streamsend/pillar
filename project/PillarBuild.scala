@@ -22,8 +22,8 @@ object PillarBuild extends Build {
     "org.scalatest" %% "scalatest" % "2.2.0" % "test"
   )
 
-  val rhPackage = TaskKey[File]("rh-package", "Packages the application for Red Hat Package Manager")
-  val rhPackageTask = rhPackage <<= (sourceDirectory, target, assembly, version) map {
+  val stage = TaskKey[File]("stage", "Stages the content of the final package.")
+  val stageTask = stage <<= (sourceDirectory, target, assembly, version) map {
     (sourceDirectory: File, targetDirectory: File, archive: File, versionId: String) =>
       val rootPath = new File(targetDirectory, "staged-package")
       val subdirectories = Map(
@@ -47,6 +47,22 @@ object PillarBuild extends Build {
         resource =>
           IO.copyFile(new File(resourcesDirectory, resource), new File(subdirectories("conf"), resource))
       }
+      targetDirectory
+  }
+
+  val zipPackage = TaskKey[File]("zip-package", "Packages the application as a zip file.")
+  val zipPackageTask = zipPackage <<= (target, version) map {
+    (targetDirectory: File, versionId: String) =>
+      "zip -r %s/pillar-%s.zip %s/staged-package/".format(targetDirectory.getPath(), versionId, targetDirectory.getPath()).!
+
+      val zip = file("%s/pillar-%s.zip".format(targetDirectory.getPath(), versionId))
+      if (!zip.exists()) throw new RuntimeException("Zip packing failed.")
+      zip
+  }
+
+  val rhPackage = TaskKey[File]("rh-package", "Packages the application for Red Hat Package Manager.")
+  val rhPackageTask = rhPackage <<= (target, version) map {
+    (targetDirectory: File, versionId: String) =>
       val iterationId = try { sys.env("GO_PIPELINE_COUNTER") } catch { case e: NoSuchElementException => "DEV" }
       "fpm -f -s dir -t rpm --package %s -n pillar --version %s --iteration %s -a all --prefix /opt/pillar -C %s/staged-package/ .".format(targetDirectory.getPath, versionId, iterationId, targetDirectory.getPath).!
 
@@ -70,7 +86,9 @@ object PillarBuild extends Build {
     licenses := Seq("MIT license" -> url("http://www.opensource.org/licenses/mit-license.php")),
     scalaVersion := "2.10.4",
     crossScalaVersions := Seq("2.10.4", "2.11.1"),
-    rhPackageTask
+    rhPackageTask,
+    stageTask,
+    zipPackageTask
   ).settings(
     publishTo := {
       val nexus = "https://oss.sonatype.org/"

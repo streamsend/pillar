@@ -1,9 +1,11 @@
 package com.chrisomeara.pillar.cli
 
-import java.io.File
+import java.io.{FileReader, File}
+import java.util.Properties
 
-import com.chrisomeara.pillar.{ConfigurationException, PrintStreamReporter, Registry, Reporter}
+import com.chrisomeara.pillar._
 import com.datastax.driver.core.Cluster
+import com.google.common.base.Strings
 import com.typesafe.config.{Config, ConfigFactory}
 
 object App {
@@ -34,10 +36,36 @@ class App(reporter: Reporter) {
     val keyspace = getFromConfiguration(configuration, dataStoreName, environment, "cassandra-keyspace-name")
     val seedAddress = getFromConfiguration(configuration, dataStoreName, environment, "cassandra-seed-address")
     val port = Integer.valueOf(getFromConfiguration(configuration, dataStoreName, environment, "cassandra-port", Some(9042.toString)))
-    val builder = Cluster.builder().addContactPoint(seedAddress).withPort(port).build()
+    val properties = loadProperties(configuration, dataStoreName, environment)
+
+    val clusterBuilder = Cluster.builder().addContactPoint(seedAddress).withPort(port)
+    if (properties != null) {
+      val authProvider = PlainTextAuthProviderFactory.fromProperties(properties)
+      if (authProvider != null) {
+        clusterBuilder.withAuthProvider(authProvider)
+      }
+
+      val useSsl = properties.getProperty("useSsl")
+      if (!Strings.isNullOrEmpty(useSsl) && useSsl.toBoolean) {
+        val optionsBuilder = new SslOptionsBuilder
+
+        val trustStoreFile = properties.getProperty("trust-store-path")
+        val trustStorePassword = properties.getProperty("trust-store-password")
+        if (!Strings.isNullOrEmpty(trustStoreFile) && !Strings.isNullOrEmpty(trustStorePassword)) {
+          optionsBuilder.withKeyStore(trustStoreFile, trustStorePassword)
+        }
+
+        optionsBuilder.withSslContext()
+        optionsBuilder.withTrustManager()
+
+        clusterBuilder.withSSL(optionsBuilder.build())
+      }
+    }
+
+    val cluster = clusterBuilder.build()
     val session = commandLineConfiguration.command match {
-      case Initialize => builder.connect()
-      case _ => builder.connect(keyspace)
+      case Initialize => cluster.connect()
+      case _ => cluster.connect(keyspace)
     }
     val command = Command(commandLineConfiguration.command, session, keyspace, commandLineConfiguration.timeStampOption, registry)
 
@@ -54,4 +82,17 @@ class App(reporter: Reporter) {
     if (default.eq(None)) throw new ConfigurationException(s"$path not found in application configuration")
     default.get
   }
+
+  private def loadProperties(configuration: Config, name: String, environment: String): Properties = {
+    val properties = new Properties()
+    val credentialsPath = getFromConfiguration(configuration, name, environment, "credentials-path")
+
+    if (Strings.isNullOrEmpty(credentialsPath)) {
+      return null
+    }
+
+    properties.load(new FileReader(credentialsPath))
+    properties
+  }
+
 }
