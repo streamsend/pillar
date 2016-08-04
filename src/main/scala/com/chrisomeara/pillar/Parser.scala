@@ -8,7 +8,7 @@ import scala.io.Source
 object Parser {
   def apply(): Parser = new Parser
 
-  private val MatchAttribute = """^-- (authoredAt|description|up|down|stage):(.*)$""".r
+  private val MatchAttribute = """^-- (authoredAt|description|up|down|stage|mapping):(.*)$""".r
 }
 
 class PartialMigration {
@@ -20,6 +20,8 @@ class PartialMigration {
 
   var currentUp = new mutable.MutableList[String]()
   var currentDown: Option[mutable.MutableList[String]] = None
+
+  var mapping = new mutable.MutableList[String]()
 
   def rotateUp() = {
     upStages += currentUp.mkString("\n")
@@ -104,6 +106,8 @@ class Parser {
           case ParsingDown => state = ParsingDownStage
           case ParsingDownStage => inProgress.rotateDown(); inProgress.currentDown = Some(new mutable.MutableList[String]())
         }
+      case MatchAttribute("mapping", mapp) =>
+        inProgress.mapping.+=(mapp)
       case cql =>
         if (!cql.isEmpty) {
 
@@ -113,6 +117,7 @@ class Parser {
             case other =>
           }
         }
+
     }
     inProgress.validate match {
       case Some(errors) => throw new InvalidMigrationException(errors)
@@ -121,11 +126,11 @@ class Parser {
         inProgress.downStages match {
           case Some(downLines) =>
             if (downLines.forall(line => line.isEmpty)) {
-              Migration(inProgress.description, new Date(inProgress.authoredAtAsLong), inProgress.upStages, None)
+              Migration(inProgress.description, new Date(inProgress.authoredAtAsLong), inProgress.upStages, inProgress.mapping, None)
             } else {
-              Migration(inProgress.description, new Date(inProgress.authoredAtAsLong), inProgress.upStages, Some(downLines))
+              Migration(inProgress.description, new Date(inProgress.authoredAtAsLong), inProgress.upStages, inProgress.mapping, Some(downLines))
             }
-          case None => Migration(inProgress.description, new Date(inProgress.authoredAtAsLong), inProgress.upStages)
+          case None => Migration(inProgress.description, new Date(inProgress.authoredAtAsLong), inProgress.upStages,inProgress.mapping)
         }
     }
   }

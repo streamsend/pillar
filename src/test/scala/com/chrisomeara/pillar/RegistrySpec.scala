@@ -79,8 +79,8 @@ class RegistrySpec extends FunSpec with BeforeAndAfter with ShouldMatchers with 
     val now = new Date()
     val oneSecondAgo = new Date(now.getTime - 1000)
     val migrations = List(
-      Migration("test now", now, Seq("up")),
-      Migration("test just before", oneSecondAgo, Seq("up"))
+      Migration("test now", now, Seq("up"), Seq("mapping")),
+      Migration("test just before", oneSecondAgo, Seq("up"), Seq("mapping"))
     )
     val registry = new Registry(migrations)
 
