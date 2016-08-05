@@ -1,7 +1,8 @@
 package com.chrisomeara.pillar
 
 import java.util.Date
-import com.datastax.driver.core.Session
+
+import com.datastax.driver.core.{BatchStatement, PreparedStatement, Session, Statement}
 import com.datastax.driver.core.querybuilder.QueryBuilder
 
 object Migration {
@@ -37,7 +38,14 @@ trait Migration {
 
   def executeUpStatement(session: Session) {
     up.foreach(session.execute)
+
+    /*var asd: BatchStatement = BatchStatement
+    asd.add(mapping.foreach(_))
+    session.execute(asd)**/
+
     insertIntoAppliedMigrations(session)
+
+
   }
 
   def executeDownStatement(session: Session)

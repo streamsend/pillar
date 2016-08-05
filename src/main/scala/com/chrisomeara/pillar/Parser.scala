@@ -1,14 +1,16 @@
 package com.chrisomeara.pillar
 
-import java.util.Date
 import java.io.InputStream
+import java.util.Date
+
 import scala.collection.mutable
 import scala.io.Source
+import scala.reflect.internal.util.TableDef.Column
 
 object Parser {
   def apply(): Parser = new Parser
 
-  private val MatchAttribute = """^-- (authoredAt|description|up|down|stage|mapping):(.*)$""".r
+  private val MatchAttribute = """^-- (authoredAt|description|up|down|stage|mapping|table|end):(.*)$""".r
 }
 
 class PartialMigration {
@@ -21,7 +23,10 @@ class PartialMigration {
   var currentUp = new mutable.MutableList[String]()
   var currentDown: Option[mutable.MutableList[String]] = None
 
+  var currentColumn = new mutable.MutableList[String]()
+
   var mapping = new mutable.MutableList[String]()
+  var migrateeTable = new MigrateeTable()
 
   def rotateUp() = {
     upStages += currentUp.mkString("\n")
@@ -85,6 +90,8 @@ class Parser {
 
   case object ParsingDownStage extends ParserState
 
+  case object ParsingTable extends ParserState
+
   def parse(resource: InputStream): Migration = {
     val inProgress = new PartialMigration
     var state: ParserState = ParsingAttributes
@@ -99,6 +106,8 @@ class Parser {
         inProgress.rotateUp()
         inProgress.currentDown = Some(new mutable.MutableList[String]())
         state = ParsingDown
+      case MatchAttribute("mapping", _) =>
+        state = ParsingTable
       case MatchAttribute("stage", number) =>
         state match {
           case ParsingUp => state = ParsingUpStage
@@ -106,19 +115,37 @@ class Parser {
           case ParsingDown => state = ParsingDownStage
           case ParsingDownStage => inProgress.rotateDown(); inProgress.currentDown = Some(new mutable.MutableList[String]())
         }
-      case MatchAttribute("mapping", mapp) =>
-        inProgress.mapping.+=(mapp)
+      case MatchAttribute("table", table) =>
+        val arr : Array[String] = table.split("->")
+        inProgress.migrateeTable.tableName = arr(1)
+        inProgress.migrateeTable.defaultTableName = arr(0)
+      case MatchAttribute("end", _) =>
+        for(line <- inProgress.currentColumn) {
+          var arr : Array[String] = line.split("->")
+          try {
+            //inProgress.migrateeTable.columnValueSource.put(arr(0), arr(1))
+            inProgress.migrateeTable.columnValueSource += (arr(0) -> arr(1))
+          } catch {
+            case e : Exception => println(e)
+          }
+      }
+        //currentColumn döngüsü, -> e göre parse et
+        //insert into ları oluştur ve mapping e at
+
+
       case cql =>
         if (!cql.isEmpty) {
 
           state match {
             case ParsingUp | ParsingUpStage => inProgress.currentUp += cql
             case ParsingDown | ParsingDownStage => inProgress.currentDown.get += cql
+            case ParsingTable => inProgress.currentColumn += cql
             case other =>
           }
         }
 
     }
+
     inProgress.validate match {
       case Some(errors) => throw new InvalidMigrationException(errors)
       case None =>
