@@ -7,7 +7,7 @@ class ReportingMigration(reporter: Reporter, wrapped: Migration) extends Migrati
   val description: String = wrapped.description
   val authoredAt: Date = wrapped.authoredAt
   val up: Seq[String] = wrapped.up
-  val mapping: Seq[String] = wrapped.mapping
+  val mapping: Seq[MigrateeTable] = wrapped.mapping
 
   override def executeUpStatement(session: Session) {
     reporter.applying(wrapped)

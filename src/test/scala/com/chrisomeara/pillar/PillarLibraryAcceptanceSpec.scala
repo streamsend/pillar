@@ -25,7 +25,7 @@ class PillarLibraryAcceptanceSpec extends FeatureSpec with GivenWhenThen with Be
         |  payload blob,
         |  PRIMARY KEY (batch_id, occurred_at, event_type)
         |)
-      """.stripMargin), Seq("mapping")),
+      """.stripMargin), Seq(new MigrateeTable())),
     Migration("creates views table", new Date(System.currentTimeMillis() - 3000),
       Seq("""
         |CREATE TABLE views (
@@ -34,16 +34,16 @@ class PillarLibraryAcceptanceSpec extends FeatureSpec with GivenWhenThen with Be
         |  person_id int,
         |  viewed_at timestamp
         |)
-      """.stripMargin), Seq("mapping")),
+      """.stripMargin), Seq(new MigrateeTable())),
     Migration("adds user_agent to views table", new Date(System.currentTimeMillis() - 1000),
       Seq("""
         |ALTER TABLE views
         |ADD user_agent text
-      """.stripMargin), Seq("mapping"), None), // Dropping a column is coming in Cassandra 2.0
+      """.stripMargin), Seq(new MigrateeTable()), None), // Dropping a column is coming in Cassandra 2.0
     Migration("adds index on views.user_agent", new Date(),
       Seq("""
         |CREATE INDEX views_user_agent ON views(user_agent)
-      """.stripMargin), Seq("mapping"))
+      """.stripMargin), Seq(new MigrateeTable()))
   )
   val registry = Registry(migrations)
   val migrator = Migrator(registry)

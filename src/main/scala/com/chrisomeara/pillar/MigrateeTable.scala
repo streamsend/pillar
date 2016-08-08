@@ -1,7 +1,5 @@
 package com.chrisomeara.pillar
 
-import java.util
-
 import scala.collection.mutable
 
 /**
@@ -9,8 +7,8 @@ import scala.collection.mutable
   */
 class MigrateeTable {
   var tableName : String = _
-  var defaultTableName : String = _
-  var tableColumnList : List[String] = _
-  var defaultTableColumnList :List[String] = _
-  var columnValueSource : Map[String, String] = _
+  var mappedTableName : String = _
+  var tableColumnList = new mutable.MutableList[String]()
+  var mappedTableColumnList  =  new mutable.MutableList[String]()
+  var columnValueSource : mutable.Map[String, String] =  scala.collection.mutable.Map[String, String]()
 }

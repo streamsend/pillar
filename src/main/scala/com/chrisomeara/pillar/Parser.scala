@@ -5,7 +5,6 @@ import java.util.Date
 
 import scala.collection.mutable
 import scala.io.Source
-import scala.reflect.internal.util.TableDef.Column
 
 object Parser {
   def apply(): Parser = new Parser
@@ -25,8 +24,7 @@ class PartialMigration {
 
   var currentColumn = new mutable.MutableList[String]()
 
-  var mapping = new mutable.MutableList[String]()
-  var migrateeTable = new MigrateeTable()
+  var mapping = new mutable.MutableList[MigrateeTable]()
 
   def rotateUp() = {
     upStages += currentUp.mkString("\n")
@@ -92,6 +90,8 @@ class Parser {
 
   case object ParsingTable extends ParserState
 
+  var migrateeTable : MigrateeTable = _
+
   def parse(resource: InputStream): Migration = {
     val inProgress = new PartialMigration
     var state: ParserState = ParsingAttributes
@@ -116,19 +116,24 @@ class Parser {
           case ParsingDownStage => inProgress.rotateDown(); inProgress.currentDown = Some(new mutable.MutableList[String]())
         }
       case MatchAttribute("table", table) =>
+        migrateeTable = new MigrateeTable()
         val arr : Array[String] = table.split("->")
-        inProgress.migrateeTable.tableName = arr(1)
-        inProgress.migrateeTable.defaultTableName = arr(0)
+        migrateeTable.tableName = arr(1).trim
+        migrateeTable.mappedTableName = arr(0).trim
       case MatchAttribute("end", _) =>
         for(line <- inProgress.currentColumn) {
           var arr : Array[String] = line.split("->")
           try {
             //inProgress.migrateeTable.columnValueSource.put(arr(0), arr(1))
-            inProgress.migrateeTable.columnValueSource += (arr(0) -> arr(1))
+            //migrateeTable.columnValueSource.+= (arr(0) -> arr(1))
+            migrateeTable.columnValueSource +=(arr(0) -> arr(1))
           } catch {
             case e : Exception => println(e)
           }
-      }
+        }
+        inProgress.mapping.+=(migrateeTable)
+        migrateeTable = null
+        inProgress.currentColumn.clear()
         //currentColumn döngüsü, -> e göre parse et
         //insert into ları oluştur ve mapping e at
 
