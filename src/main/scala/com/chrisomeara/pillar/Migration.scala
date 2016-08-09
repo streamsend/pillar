@@ -71,16 +71,17 @@ trait Migration {
       }
     }
 
-    //create insert into statements for each table
+    //create batch statements for each table
     for(i <- mapping) {
-      //batch statement aç
-      //var memberCount = session.execute("select count(*) from " + i.mappedTableName)
+      //create batch statement
+      var insert : String = "BEGIN BATCH "
+
       var resultSet : ResultSet = session.execute("select * from " + i.mappedTableName)
       var iterator = resultSet.iterator()
 
       while(iterator.hasNext) {
         var row : Row = iterator.next()
-        var insert : String = "INSERT INTO " + i.tableName + " ";
+        insert += "INSERT INTO " + i.tableName + " ";
 
         //add column names
         insert += "("
@@ -130,7 +131,6 @@ trait Migration {
               } catch {
                 case e : Exception => println(e)
               }
-
             }
             else { //from sql query
               var query : String = i.columnValueSource.get(c).get.toString()
@@ -141,8 +141,6 @@ trait Migration {
                     var realValue = row.getObject(m.substring(1, m.size))
                     query = pattern.replaceFirstIn(query, realValue.toString)
                   }
-
-
                 }
 
               var result = session.execute(query).one().getObject(c)
@@ -177,14 +175,12 @@ trait Migration {
         }
 
         insert = insert.substring(0,insert.size-1) //delete last comma
-        insert += ")"
-        session.execute(insert)
-        //batch statement a ekle
+        insert += ");"
       }
-
-      //batch i çalıştır
+      //run the batch statement
+      insert += " APPLY BATCH;"
+      session.execute(insert)
     }
-
   }
 
   def executeDownStatement(session: Session)
