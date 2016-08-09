@@ -48,7 +48,9 @@ trait Migration {
   def executeTableStatement(session: Session): Unit = {
     //Maybe, these for loops can be reduce a function
     for(i <- mapping) {
-      val s = session.execute("select column_name from system.schema_columns where keyspace_name ='scalatest' and columnfamily_name = '" + i.tableName.trim + "'")
+      val s = session.execute("select column_name " +
+        "from system.schema_columns " +
+        "where keyspace_name ='" + session.getLoggedKeyspace + "' and columnfamily_name = '" + i.tableName + "'")
 
       var iterator = s.iterator()
       while(iterator.hasNext) {
@@ -58,10 +60,9 @@ trait Migration {
     }
 
     for(i <- mapping) {
-      val query = "select column_name from system.schema_columns where keyspace_name ='scalatest' and columnfamily_name = ?"
-      var preparedStatement : PreparedStatement = session.prepare(query);
-      var boundStatement : BoundStatement = new BoundStatement(preparedStatement);
-      var s = session.execute(boundStatement.bind(i.mappedTableName.trim));
+      val s = session.execute("select column_name " +
+        "from system.schema_columns " +
+        "where keyspace_name ='" + session.getLoggedKeyspace + "' and columnfamily_name = '" + i.mappedTableName + "'")
 
       var iterator = s.iterator()
       while(iterator.hasNext) {
@@ -99,7 +100,7 @@ trait Migration {
               var processSh : String = "sh " + arr(0) //add path
 
               for(j <- 1 to arr.size-1) {
-                if(arr(j).contains("$")) { //from query
+                if(arr(j).contains("$")) { //variable parameter
                   println("from query")
                   var parameter : Array[String] = arr(j).split("\\$")
 
@@ -112,20 +113,67 @@ trait Migration {
                 }
               }
               try {
-                val result :String = Process(processSh).!!
-                insert += "'"+ result + "',"
+                val columnDataType : String = session.getCluster().getMetadata().getKeyspace(session.getLoggedKeyspace).getTable(i.tableName).getColumn(c).getType().toString
+                if(columnDataType.contains("text") || columnDataType.contains("ascii") || columnDataType.contains("varchar")) {
+                  val result :String = Process(processSh).!!
+                  insert += "'"+ result + "',"
+                }
+                else {
+                  try {
+                    var result = Process(processSh).!!
+                    insert += result + ","
+                  } catch {
+                    case e : NumberFormatException => println("Did not come an int value from " + processSh)
+                  }
+
+                }
               } catch {
                 case e : Exception => println(e)
               }
 
             }
             else { //from sql query
+              var query : String = i.columnValueSource.get(c).get.toString()
+              if(query.contains("$")) {
+                  val pattern = "\\$[a-z]*".r
 
+                  for(m <- pattern.findAllIn(query)) { //replace variables with their real value
+                    var realValue = row.getObject(m.substring(1, m.size))
+                    query = pattern.replaceFirstIn(query, realValue.toString)
+                  }
+
+
+                }
+
+              var result = session.execute(query).one().getObject(c)
+
+              val columnDataType : String = session.getCluster().getMetadata().getKeyspace(session.getLoggedKeyspace).getTable(i.tableName).getColumn(c).getType().toString
+              if(columnDataType.contains("text") || columnDataType.contains("ascii") || columnDataType.contains("varchar")) {
+                insert += "'"+ result + "',"
+              }
+              else {
+                insert += result + ","
+              }
             }
           }
-          /*else if (sutun diğer tabloda var mı diye bak, varsa al) {
+          else { //default value
+            try {
+              var result = row.getObject(c)
 
-          }*/
+              val columnDataType : String = session.getCluster().getMetadata().getKeyspace(session.getLoggedKeyspace).getTable(i.tableName).getColumn(c).getType().toString
+              if(columnDataType.contains("text") || columnDataType.contains("ascii") || columnDataType.contains("varchar")) {
+                insert += "'"+ result + "',"
+              }
+              else {
+                insert += result + ","
+              }
+            } catch {
+              case e : Exception => {
+                var result = "null";
+                insert += result + ",";
+              }
+            }
+          }
         }
 
         insert = insert.substring(0,insert.size-1) //delete last comma
@@ -136,10 +184,7 @@ trait Migration {
 
       //batch i çalıştır
     }
-    //sonra insert into ları oluştur
-    /*var asd: BatchStatement = BatchStatement
-    asd.add(mapping.foreach(_))
-    session.execute(asd)**/
+
   }
 
   def executeDownStatement(session: Session)
