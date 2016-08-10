@@ -5,7 +5,7 @@ import java.util.Date
 import com.datastax.driver.core._
 import com.datastax.driver.core.querybuilder.QueryBuilder
 
-import scala.sys.process.Process
+import scala.collection.mutable
 
 object Migration {
   def apply(description: String, authoredAt: Date, up: Seq[String], mapping: Seq[MigrateeTable]): Migration = {
@@ -46,134 +46,23 @@ trait Migration {
   }
 
   def executeTableStatement(session: Session): Unit = {
-    //Maybe, these for loops can be reduce a function
-    for(i <- mapping) {
-      val s = session.execute("select column_name " +
-        "from system.schema_columns " +
-        "where keyspace_name ='" + session.getLoggedKeyspace + "' and columnfamily_name = '" + i.tableName + "'")
-
-      var iterator = s.iterator()
-      while(iterator.hasNext) {
-        var columnName : Array[String] = iterator.next.toString.split("Row\\[|\\]")
-        i.tableColumnList += columnName(1)
-      }
-    }
-
-    for(i <- mapping) {
-      val s = session.execute("select column_name " +
-        "from system.schema_columns " +
-        "where keyspace_name ='" + session.getLoggedKeyspace + "' and columnfamily_name = '" + i.mappedTableName + "'")
-
-      var iterator = s.iterator()
-      while(iterator.hasNext) {
-        var columnName : Array[String] = iterator.next.toString.split("Row\\[|\\]")
-        i.mappedTableColumnList += columnName(1)
-      }
-    }
+    mapping.foreach((migrateeTable : MigrateeTable) => migrateeTable.readColumnNames(session))
 
     //create batch statements for each table
     for(i <- mapping) {
       //create batch statement
+      var result : Any = ""
       var insert : String = "BEGIN BATCH "
 
       var resultSet : ResultSet = session.execute("select * from " + i.mappedTableName)
       var iterator = resultSet.iterator()
 
+      var defaultInsertStatement : String = buildDefaultInsertStatement(i.tableName, i.tableColumnList)
+
       while(iterator.hasNext) {
-        var row : Row = iterator.next()
-        insert += "INSERT INTO " + i.tableName + " ";
-
-        //add column names
-        insert += "("
-        for(c <- i.tableColumnList) {
-          insert += c + ","
-        }
-        insert = insert.substring(0,insert.size-1) //delete last comma
-        insert += ") VALUES ("
-
-        //find values each column
-        for(c <- i.tableColumnList) {
-          //respectively, sh-sql-default-null / will change as match case
-          if(i.columnValueSource.contains(c)) { //sh or sql
-            if(i.columnValueSource.get(c).toString().contains(".sh")) { //from sh file
-              var resource : String = i.columnValueSource.get(c).get
-              val arr : Array[String] = resource.split(" ")
-              var processSh : String = "sh " + arr(0) //add path
-
-              for(j <- 1 to arr.size-1) {
-                if(arr(j).contains("$")) { //variable parameter
-                  println("from query")
-                  var parameter : Array[String] = arr(j).split("\\$")
-
-                  processSh += " " + row.getObject(parameter(1))
-                  println(processSh)
-                }
-                else {
-                  println("normal")
-                  processSh += " " + arr(j)
-                }
-              }
-              try {
-                val columnDataType : String = session.getCluster().getMetadata().getKeyspace(session.getLoggedKeyspace).getTable(i.tableName).getColumn(c).getType().toString
-                if(columnDataType.contains("text") || columnDataType.contains("ascii") || columnDataType.contains("varchar")) {
-                  val result :String = Process(processSh).!!
-                  insert += "'"+ result + "',"
-                }
-                else {
-                  try {
-                    var result = Process(processSh).!!
-                    insert += result + ","
-                  } catch {
-                    case e : NumberFormatException => println("Did not come an int value from " + processSh)
-                  }
-
-                }
-              } catch {
-                case e : Exception => println(e)
-              }
-            }
-            else { //from sql query
-              var query : String = i.columnValueSource.get(c).get.toString()
-              if(query.contains("$")) {
-                  val pattern = "\\$[a-z]*".r
-
-                  for(m <- pattern.findAllIn(query)) { //replace variables with their real value
-                    var realValue = row.getObject(m.substring(1, m.size))
-                    query = pattern.replaceFirstIn(query, realValue.toString)
-                  }
-                }
-
-              var result = session.execute(query).one().getObject(c)
-
-              val columnDataType : String = session.getCluster().getMetadata().getKeyspace(session.getLoggedKeyspace).getTable(i.tableName).getColumn(c).getType().toString
-              if(columnDataType.contains("text") || columnDataType.contains("ascii") || columnDataType.contains("varchar")) {
-                insert += "'"+ result + "',"
-              }
-              else {
-                insert += result + ","
-              }
-            }
-          }
-          else { //default value
-            try {
-              var result = row.getObject(c)
-
-              val columnDataType : String = session.getCluster().getMetadata().getKeyspace(session.getLoggedKeyspace).getTable(i.tableName).getColumn(c).getType().toString
-              if(columnDataType.contains("text") || columnDataType.contains("ascii") || columnDataType.contains("varchar")) {
-                insert += "'"+ result + "',"
-              }
-              else {
-                insert += result + ","
-              }
-            } catch {
-              case e : Exception => {
-                var result = "null";
-                insert += result + ",";
-              }
-            }
-          }
-        }
-
+        var row: Row = iterator.next()
+        insert += defaultInsertStatement
+        insert += i.findValuesOfColumns(row, session)
         insert = insert.substring(0,insert.size-1) //delete last comma
         insert += ");"
       }
@@ -181,6 +70,17 @@ trait Migration {
       insert += " APPLY BATCH;"
       session.execute(insert)
     }
+  }
+
+  def buildDefaultInsertStatement(tableName: String, columnNameList: mutable.MutableList[String]): String = {
+    var dis: String = "INSERT INTO " + tableName + " ("
+
+    columnNameList.foreach((columnName : String) => dis += columnName + ",")
+
+    dis = dis.substring(0, dis.size - 1) //delete last comma
+    dis += ") VALUES ("
+
+    dis
   }
 
   def executeDownStatement(session: Session)

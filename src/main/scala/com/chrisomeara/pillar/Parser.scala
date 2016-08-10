@@ -69,7 +69,6 @@ class PartialMigration {
       case _:NumberFormatException => -1
     }
   }
-
 }
 
 class Parser {
@@ -124,8 +123,6 @@ class Parser {
         for(line <- inProgress.currentColumn) {
           var arr : Array[String] = line.split("->")
           try {
-            //inProgress.migrateeTable.columnValueSource.put(arr(0), arr(1))
-            //migrateeTable.columnValueSource.+= (arr(0) -> arr(1))
             migrateeTable.columnValueSource +=(arr(0) -> arr(1))
           } catch {
             case e : Exception => println(e)
@@ -134,10 +131,6 @@ class Parser {
         inProgress.mapping.+=(migrateeTable)
         migrateeTable = null
         inProgress.currentColumn.clear()
-        //currentColumn döngüsü, -> e göre parse et
-        //insert into ları oluştur ve mapping e at
-
-
       case cql =>
         if (!cql.isEmpty) {
 
@@ -148,7 +141,6 @@ class Parser {
             case other =>
           }
         }
-
     }
 
     inProgress.validate match {
