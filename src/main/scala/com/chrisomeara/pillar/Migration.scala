@@ -53,8 +53,13 @@ trait Migration {
       //create batch statement
       var result : Any = ""
       var insert : String = "BEGIN BATCH "
+      var batchCount: Int = 0
+      var total: Int = 0
 
-      var resultSet : ResultSet = session.execute("select * from " + i.mappedTableName)
+      val statement: Statement = new SimpleStatement("select * from " + i.mappedTableName)
+      statement.setFetchSize(1000)
+
+      var resultSet : ResultSet = session.execute(statement)
       var iterator = resultSet.iterator()
 
       var defaultInsertStatement : String = buildDefaultInsertStatement(i.tableName, i.tableColumnList)
@@ -65,10 +70,20 @@ trait Migration {
         insert += i.findValuesOfColumns(row, session)
         insert = insert.substring(0,insert.size-1) //delete last comma
         insert += ");"
+
+        batchCount += 1
+        if(batchCount == 500) { //against batch statement too large error
+          batchCount = 0
+          insert += " APPLY BATCH";
+          session.execute(insert)
+          //println(total += batchCount)
+          insert = "BEGIN BATCH "
+        }
       }
       //run the batch statement
       insert += " APPLY BATCH;"
       session.execute(insert)
+      println("Last Batch has finished")
     }
   }
 
