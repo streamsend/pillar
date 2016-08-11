@@ -157,11 +157,11 @@ Each migration may optionally specify multiple stages. Stages are executed in th
     -- stage: 2
     DROP TABLE groups
 
-To carry values (without any change or after modifying) from a table to a new table, you can use -- mapping section.
--- table section is necassary for each table. Name before '->' is migrating table and name after '->'  is migratee table.
-You can decide values will change or not. New values may come from an sh file or a sql query. You can pass parameter via '$'. 
-These parameters must be column name on migrating table. If you want to constant parameters, you can write without '$'.
-Value for columns that will not change, it will be  same with migrating table. If it is a new column, there will be null.
+To carry values (without any change or after modifying) from a table to a new table, you can use "-- mapping" section.
+"-- table" section is necessary for each table. Name before '->' is migrating table and name after '->'  is migratee table.
+You can decide whether the values will change or not. New values may come from an sh file or an sql query. You can pass parameters via '$'. 
+These parameters must be a column name on migrating table. If you want to use constant parameters, you can write without '$'.
+The values of columns which are not mapped in the "-- table" section will be the same with migrating table. If it is a new column, there will be null.
 
     -- description: creates users and groups tables
         -- authoredAt: 1469630066000
