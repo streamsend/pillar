@@ -32,7 +32,7 @@ class App(reporter: Reporter) {
     val configuration = ConfigFactory.load()
     val dataStoreName = commandLineConfiguration.dataStore
     val environment = commandLineConfiguration.environment
-    val keyspace = getFromConfiguration(configuration, dataStoreName, environment, "cassandra-keyspace-name", Some("deneme"))
+    val keyspace = getFromConfiguration(configuration, dataStoreName, environment, "cassandra-keyspace-name")
 
     val seedAddress = getFromConfiguration(configuration, dataStoreName, environment, "cassandra-seed-address", Some("127.0.0.1"))
     val port = Integer.valueOf(getFromConfiguration(configuration, dataStoreName, environment, "cassandra-port", Some(9042.toString)))

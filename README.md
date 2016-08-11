@@ -160,7 +160,7 @@ Each migration may optionally specify multiple stages. Stages are executed in th
 To carry values (without any change or after modifying) from a table to a new table, you can use -- mapping section.
 -- table section is necassary for each table. Name before '->' is migrating table and name after '->'  is migratee table.
 You can decide values will change or not. New values may come from an sh file or a sql query. You can pass parameter via '$'. 
-These parameters must be column name on migrating table. If you want to constant parameters, you can write without '$'
+These parameters must be column name on migrating table. If you want to constant parameters, you can write without '$'.
 Value for columns that will not change, it will be  same with migrating table. If it is a new column, there will be null.
 
     -- description: creates users and groups tables
@@ -180,7 +180,7 @@ Value for columns that will not change, it will be  same with migrating table. I
         -- mapping:
          
         -- table: backup_users->users
-        username->/home/mgunes/<path>.sh $name 
+        username->/home/mgunes/changeName.sh $name 
         score->select score from score_table where id = $id
         -- end:
         

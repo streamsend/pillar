@@ -12,8 +12,9 @@ class MigrateeTable {
   var tableName : String = _
   var mappedTableName : String = _
   var tableColumnList = new mutable.MutableList[String]()
-  //var mappedTableColumnList  =  new mutable.MutableList[String]() is it necessary?
+  var columnsAndTypes: mutable.Map[String, String] = scala.collection.mutable.Map[String, String]()
   var columnValueSource : mutable.Map[String, String] =  scala.collection.mutable.Map[String, String]()
+  var cassandraDataTypes: List[String] = List("text", "ascii", "varchar", "inet", "timestamp")
 
   def readColumnNames(session: Session): Unit = {
     val s = session.execute("select column_name " +
@@ -24,6 +25,7 @@ class MigrateeTable {
     while(iterator.hasNext) {
       var columnName : Array[String] = iterator.next.toString.split("Row\\[|\\]")
       tableColumnList += columnName(1)
+      columnsAndTypes += (columnName(1) -> session.getCluster.getMetadata.getKeyspace(session.getLoggedKeyspace).getTable(tableName).getColumn(columnName(1)).getType.toString)
     }
   }
 
@@ -73,8 +75,7 @@ class MigrateeTable {
         else //default value
           result = row.getObject(columnName)
 
-        val columnDataType: String = session.getCluster.getMetadata.getKeyspace(session.getLoggedKeyspace).getTable(tableName).getColumn(columnName).getType.toString
-        if (columnDataType.contains("text") || columnDataType.contains("ascii") || columnDataType.contains("varchar"))
+        if (cassandraDataTypes.contains(columnsAndTypes.get(columnName).get))
           valuesStatement += "'" + result + "',"
         else
           valuesStatement += result + ","
