@@ -3,7 +3,6 @@ package com.chrisomeara.pillar
 import com.datastax.driver.core.{ColumnMetadata, Row, Session, TableMetadata}
 
 import scala.collection.mutable
-import com.chrisomeara.pillar.modify.NoModify
 
 /**
   * Created by mgunes on 05.08.2016.

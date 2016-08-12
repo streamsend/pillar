@@ -41,8 +41,6 @@ trait Migration {
   def executeUpStatement(session: Session) {
     up.foreach(session.execute)
     insertIntoAppliedMigrations(session)
-
-    executeTableStatement(session)
   }
 
   def executeTableStatement(session: Session): Unit = {

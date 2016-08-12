@@ -1,10 +1,9 @@
 package com.chrisomeara.pillar.cli
 
 import java.io.File
-import java.util.function.Consumer
 
 import com.chrisomeara.pillar.{ConfigurationException, PrintStreamReporter, Registry, Reporter}
-import com.datastax.driver.core.{Cluster, PreparedStatement, ResultSet, Row}
+import com.datastax.driver.core.Cluster
 import com.typesafe.config.{Config, ConfigFactory}
 
 object App {
