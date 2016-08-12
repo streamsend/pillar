@@ -3,6 +3,8 @@ package com.chrisomeara.pillar
 import java.io.InputStream
 import java.util.Date
 
+import com.chrisomeara.pillar.modify.{ShStrategy, SqlStrategy}
+
 import scala.collection.mutable
 import scala.io.Source
 
@@ -123,7 +125,13 @@ class Parser {
         for(line <- inProgress.currentColumn) {
           var arr : Array[String] = line.split("->")
           try {
-            migrateeTable.columnValueSource +=(arr(0) -> arr(1))
+            var columnProperty = new ColumnProperty(arr(0))
+            columnProperty.valueSource = arr(1)
+            if(arr(1).contains(".sh"))
+              columnProperty.modifyOperation = new ShStrategy
+            else if(arr(1).contains("select"))
+              columnProperty.modifyOperation = new SqlStrategy
+            migrateeTable.columns += (arr(0) -> columnProperty)
           } catch {
             case e : Exception => println(e)
           }

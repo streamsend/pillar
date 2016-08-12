@@ -46,7 +46,7 @@ trait Migration {
   }
 
   def executeTableStatement(session: Session): Unit = {
-    mapping.foreach((migrateeTable : MigrateeTable) => migrateeTable.readColumnNames(session))
+    mapping.foreach((migrateeTable : MigrateeTable) => migrateeTable.readColumnNamesAndTypes(session))
 
     //create batch statements for each table
     for(i <- mapping) {
@@ -62,7 +62,7 @@ trait Migration {
       var resultSet : ResultSet = session.execute(statement)
       var iterator = resultSet.iterator()
 
-      var defaultInsertStatement : String = buildDefaultInsertStatement(i.tableName, i.tableColumnList)
+      var defaultInsertStatement : String = buildDefaultInsertStatement(i.tableName, i.columns)
 
       while(iterator.hasNext) {
         var row: Row = iterator.next()
@@ -87,11 +87,10 @@ trait Migration {
     }
   }
 
-  def buildDefaultInsertStatement(tableName: String, columnNameList: mutable.MutableList[String]): String = {
+  def buildDefaultInsertStatement(tableName: String, columns: mutable.Map[String, ColumnProperty]): String = {
     var dis: String = "INSERT INTO " + tableName + " ("
 
-    columnNameList.foreach((columnName : String) => dis += columnName + ",")
-
+    columns.keySet.foreach((key: String) =>  dis += key + ",")
     dis = dis.substring(0, dis.size - 1) //delete last comma
     dis += ") VALUES ("
 

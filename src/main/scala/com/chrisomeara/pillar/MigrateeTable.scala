@@ -11,12 +11,10 @@ import scala.sys.process.Process
 class MigrateeTable {
   var tableName : String = _
   var mappedTableName : String = _
-  var tableColumnList = new mutable.MutableList[String]()
-  var columnsAndTypes: mutable.Map[String, String] = scala.collection.mutable.Map[String, String]()
-  var columnValueSource : mutable.Map[String, String] =  scala.collection.mutable.Map[String, String]()
+  var columns: mutable.Map[String, ColumnProperty] =scala.collection.mutable.Map[String, ColumnProperty]()
   var cassandraDataTypes: List[String] = List("text", "ascii", "varchar", "inet", "timestamp")
 
-  def readColumnNames(session: Session): Unit = {
+  def readColumnNamesAndTypes(session: Session): Unit = {
     val s = session.execute("select column_name " +
       "from system.schema_columns " +
       "where keyspace_name ='" + session.getLoggedKeyspace + "' and columnfamily_name = '" + tableName + "'")
@@ -24,69 +22,37 @@ class MigrateeTable {
     val iterator = s.iterator()
     while(iterator.hasNext) {
       var columnName : Array[String] = iterator.next.toString.split("Row\\[|\\]")
-      tableColumnList += columnName(1)
-      columnsAndTypes += (columnName(1) -> session.getCluster.getMetadata.getKeyspace(session.getLoggedKeyspace).getTable(tableName).getColumn(columnName(1)).getType.toString)
-    }
-  }
-
-  def newValueFromShFile(columnName: String, row: Row): String = {
-    var resource: String = columnValueSource.get(columnName).get
-    val arr: Array[String] = resource.split(" ")
-    var processSh: String = "sh " + arr(0) //add path
-
-    for (j <- 1 to arr.size - 1) {
-      if (arr(j).contains("$")) {
-        var parameter: Array[String] = arr(j).split("\\$") //variable parameter
-
-        processSh += " " + row.getObject(parameter(1))
+      var dataType: String = session.getCluster.getMetadata.getKeyspace(session.getLoggedKeyspace).getTable(tableName).getColumn(columnName(1)).getType.toString
+      if(columns.contains(columnName(1))) {
+        columns.get(columnName(1)).get.dataType = dataType
       }
-      else
-        processSh += " " + arr(j)
-    }
-    Process(processSh).!!.trim
-  }
-
-  def newValueFromSqlQuery(columnName: String, row: Row, session: Session): String = {
-    var query: String = columnValueSource.get(columnName).get.toString
-    if (query.contains("$")) {
-      val pattern = "\\$[a-z]*".r
-
-      for (m <- pattern.findAllIn(query)) {
-        //replace variables with their real value
-        val realValue = row.getObject(m.substring(1, m.size))
-        query = pattern.replaceFirstIn(query, realValue.toString)
+      else {
+        var columnProperty = new ColumnProperty(columnName(1))
+        columnProperty.dataType = dataType
+        columns += (columnName(1) -> columnProperty)
       }
     }
-    session.execute(query).one().getObject(columnName).toString.trim
   }
 
   def findValuesOfColumns(row: Row, session: Session): String = {
     var result: Any = ""
     var valuesStatement: String = ""
 
-    //find values each column
-    tableColumnList.foreach((columnName: String) => {
+    columns.keySet.foreach((key: String) => {
       try {
-        if (columnValueSource.contains(columnName)) //sh or sql
-          if (columnValueSource.get(columnName).toString.contains(".sh")) //from sh file
-            result = newValueFromShFile(columnName, row)
-          else //from sql query
-            result = newValueFromSqlQuery(columnName, row, session)
-        else //default value
-          result = row.getObject(columnName)
+        result = columns.get(key).get.modifyOperation.modify(columns.get(key).get, row, session)
 
-        if (cassandraDataTypes.contains(columnsAndTypes.get(columnName).get))
+        if (cassandraDataTypes.contains(columns.get(key).get.dataType))
           valuesStatement += "'" + result + "',"
         else
           valuesStatement += result + ","
       } catch {
-        case e : IllegalArgumentException => { //not found default column
+        case e : Exception => {
           var result = "null"
           valuesStatement += result + ","
         }
       }
     })
-
     valuesStatement
   }
 }
