@@ -9,7 +9,7 @@ class ColumnProperty(columnName: String) {
 
   var name: String = columnName
   var dataType: String = _
-  var valueSource: String =  _
+  var valueSource: String =  "no-source"
   var modifyOperation: ModifyStrategy = new NoModify
 
 }

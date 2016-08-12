@@ -1,9 +1,9 @@
 package com.chrisomeara.pillar
 
-import com.datastax.driver.core.{Row, Session}
+import com.datastax.driver.core.{ColumnMetadata, Row, Session, TableMetadata}
 
 import scala.collection.mutable
-import scala.sys.process.Process
+import com.chrisomeara.pillar.modify.NoModify
 
 /**
   * Created by mgunes on 05.08.2016.
@@ -11,25 +11,48 @@ import scala.sys.process.Process
 class MigrateeTable {
   var tableName : String = _
   var mappedTableName : String = _
-  var columns: mutable.Map[String, ColumnProperty] =scala.collection.mutable.Map[String, ColumnProperty]()
-  var cassandraDataTypes: List[String] = List("text", "ascii", "varchar", "inet", "timestamp")
+  var mappedTableColumns = new mutable.MutableList[String]
+  var columns: mutable.Map[String, ColumnProperty] = scala.collection.mutable.Map[String, ColumnProperty]()
+  var primaryKeyColumns = new mutable.MutableList[String]
+  var cassandraDataTypes = List("text", "ascii", "varchar", "inet", "timestamp")
 
-  def readColumnNamesAndTypes(session: Session): Unit = {
-    val s = session.execute("select column_name " +
-      "from system.schema_columns " +
-      "where keyspace_name ='" + session.getLoggedKeyspace + "' and columnfamily_name = '" + tableName + "'")
+  def readColumnsMetadata(session: Session): Unit = {
+    val tableMetadata = session.getCluster.getMetadata.getKeyspace(session.getLoggedKeyspace).getTable(tableName)
+    readColumnNamesAndTypes(tableMetadata)
+    readPrimaryKeys(tableMetadata)
+    readMappedTableColumnNames(session)
+  }
 
-    val iterator = s.iterator()
+  def readMappedTableColumnNames(session: Session): Unit = {
+    val iterator = session.getCluster.getMetadata.getKeyspace(session.getLoggedKeyspace).getTable(mappedTableName).getColumns.listIterator()
+
     while(iterator.hasNext) {
-      var columnName : Array[String] = iterator.next.toString.split("Row\\[|\\]")
-      var dataType: String = session.getCluster.getMetadata.getKeyspace(session.getLoggedKeyspace).getTable(tableName).getColumn(columnName(1)).getType.toString
-      if(columns.contains(columnName(1))) {
-        columns.get(columnName(1)).get.dataType = dataType
+      mappedTableColumns += iterator.next().getName
+    }
+  }
+
+  def readPrimaryKeys(tableMetadata: TableMetadata): Unit = {
+    val pkIterator = tableMetadata.getPrimaryKey.listIterator()
+
+    while(pkIterator.hasNext) {
+      primaryKeyColumns += pkIterator.next.getName
+    }
+  }
+
+  def readColumnNamesAndTypes(tableMetadata: TableMetadata): Unit = {
+    val iterator = tableMetadata.getColumns.iterator()
+    while(iterator.hasNext) {
+      var column:ColumnMetadata = iterator.next()
+      var columnName = column.getName
+      var dataType = column.getType.toString
+
+      if(columns.contains(columnName)) {
+        columns.get(columnName).get.dataType = dataType
       }
       else {
-        var columnProperty = new ColumnProperty(columnName(1))
+        var columnProperty = new ColumnProperty(columnName)
         columnProperty.dataType = dataType
-        columns += (columnName(1) -> columnProperty)
+        columns += (columnName -> columnProperty)
       }
     }
   }
@@ -54,5 +77,17 @@ class MigrateeTable {
       }
     })
     valuesStatement
+  }
+
+  def primaryKeyNullControl(): Boolean = {
+    var control: Boolean = true
+    val iterator = primaryKeyColumns.iterator
+
+    while(control == true && iterator.hasNext) {
+      var column = iterator.next()
+      if(columns.get(column).get.valueSource.equalsIgnoreCase("no-source") && !mappedTableColumns.contains(column))
+        control = false
+    }
+    control
   }
 }

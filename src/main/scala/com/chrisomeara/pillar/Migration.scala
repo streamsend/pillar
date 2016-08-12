@@ -46,7 +46,14 @@ trait Migration {
   }
 
   def executeTableStatement(session: Session): Unit = {
-    mapping.foreach((migrateeTable : MigrateeTable) => migrateeTable.readColumnNamesAndTypes(session))
+    mapping.foreach((migrateeTable : MigrateeTable) => migrateeTable.readColumnsMetadata(session))
+
+    mapping.foreach((migrateTable: MigrateeTable) => {
+      if(migrateTable.primaryKeyNullControl() == false) {
+        println("Primary Key can not be null, please check your tables and mappings")
+        throw new Exception
+      }
+    })
 
     //create batch statements for each table
     for(i <- mapping) {
