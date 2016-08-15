@@ -13,7 +13,7 @@ class MigrateeTable {
   var mappedTableColumns = new mutable.MutableList[String]
   var columns: mutable.Map[String, ColumnProperty] = scala.collection.mutable.Map[String, ColumnProperty]()
   var primaryKeyColumns = new mutable.MutableList[String]
-  var cassandraDataTypes = List("text", "ascii", "varchar", "inet", "timestamp")
+  var cassandraStringDataTypes = List("text", "ascii", "varchar", "inet", "timestamp")
 
   def readColumnsMetadata(session: Session): Unit = {
     val tableMetadata = session.getCluster.getMetadata.getKeyspace(session.getLoggedKeyspace).getTable(tableName)
@@ -58,24 +58,26 @@ class MigrateeTable {
 
   def findValuesOfColumns(row: Row, session: Session): String = {
     var result: Any = ""
-    var valuesStatement: String = ""
+    val valuesStatement = mutable.StringBuilder.newBuilder
 
     columns.keySet.foreach((key: String) => {
       try {
         result = columns.get(key).get.modifyOperation.modify(columns.get(key).get, row, session)
 
-        if (cassandraDataTypes.contains(columns.get(key).get.dataType))
-          valuesStatement += "'" + result + "',"
+        if (cassandraStringDataTypes.contains(columns.get(key).get.dataType))
+          valuesStatement.append("'" + result + "',")
         else
-          valuesStatement += result + ","
+          valuesStatement.append(result + ",")
       } catch {
         case e : Exception => {
           var result = "null"
-          valuesStatement += result + ","
+          valuesStatement.append(result + ",")
         }
       }
     })
-    valuesStatement
+    valuesStatement.deleteCharAt(valuesStatement.size-1) //delete last comma
+    valuesStatement.append(");")
+    valuesStatement.toString()
   }
 
   def primaryKeyNullControl(): Boolean = {

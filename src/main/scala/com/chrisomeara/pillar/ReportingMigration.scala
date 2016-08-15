@@ -6,6 +6,7 @@ import com.datastax.driver.core.Session
 class ReportingMigration(reporter: Reporter, wrapped: Migration) extends Migration {
   val description: String = wrapped.description
   val authoredAt: Date = wrapped.authoredAt
+  val fetch: String = wrapped.fetch
   val up: Seq[String] = wrapped.up
   val mapping: Seq[MigrateeTable] = wrapped.mapping
 

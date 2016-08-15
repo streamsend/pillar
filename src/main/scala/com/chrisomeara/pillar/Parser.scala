@@ -3,7 +3,7 @@ package com.chrisomeara.pillar
 import java.io.InputStream
 import java.util.Date
 
-import com.chrisomeara.pillar.modify.{ShStrategy, SqlStrategy}
+import com.chrisomeara.pillar.modify.{ShStrategy, CqlStrategy}
 
 import scala.collection.mutable
 import scala.io.Source
@@ -11,12 +11,13 @@ import scala.io.Source
 object Parser {
   def apply(): Parser = new Parser
 
-  private val MatchAttribute = """^-- (authoredAt|description|up|down|stage|mapping|table|end):(.*)$""".r
+  private val MatchAttribute = """^-- (authoredAt|description|fetch|up|down|stage|mapping|table|end):(.*)$""".r
 }
 
 class PartialMigration {
   var description: String = ""
   var authoredAt: String = ""
+  var fetch: String = ""
 
   var upStages = new mutable.MutableList[String]()
   var downStages : Option[mutable.MutableList[String]] = None
@@ -59,6 +60,7 @@ class PartialMigration {
     if (description.isEmpty) errors("description") = "must be present"
     if (authoredAt.isEmpty) errors("authoredAt") = "must be present"
     if (!authoredAt.isEmpty && authoredAtAsLong < 1) errors("authoredAt") = "must be a number greater than zero"
+    if (fetch.isEmpty) errors("fetch") = "must be present"
     if (upStages.isEmpty) errors("up") = "must be present"
 
     if (errors.nonEmpty) Some(errors.toMap) else None
@@ -101,6 +103,8 @@ class Parser {
         inProgress.authoredAt = authoredAt.trim
       case MatchAttribute("description", description) =>
         inProgress.description = description.trim
+      case MatchAttribute("fetch", fetch) =>
+        inProgress.fetch = fetch.trim
       case MatchAttribute("up", _) =>
         state = ParsingUp
       case MatchAttribute("down", _) =>
@@ -130,7 +134,7 @@ class Parser {
             if(arr(1).contains(".sh"))
               columnProperty.modifyOperation = new ShStrategy
             else if(arr(1).contains("select"))
-              columnProperty.modifyOperation = new SqlStrategy
+              columnProperty.modifyOperation = new CqlStrategy
             migrateeTable.columns += (arr(0) -> columnProperty)
           } catch {
             case e : Exception => println(e)
@@ -158,11 +162,11 @@ class Parser {
         inProgress.downStages match {
           case Some(downLines) =>
             if (downLines.forall(line => line.isEmpty)) {
-              Migration(inProgress.description, new Date(inProgress.authoredAtAsLong), inProgress.upStages, inProgress.mapping, None)
+              Migration(inProgress.description, new Date(inProgress.authoredAtAsLong), inProgress.fetch, inProgress.upStages, inProgress.mapping, None)
             } else {
-              Migration(inProgress.description, new Date(inProgress.authoredAtAsLong), inProgress.upStages, inProgress.mapping, Some(downLines))
+              Migration(inProgress.description, new Date(inProgress.authoredAtAsLong), inProgress.fetch, inProgress.upStages, inProgress.mapping, Some(downLines))
             }
-          case None => Migration(inProgress.description, new Date(inProgress.authoredAtAsLong), inProgress.upStages,inProgress.mapping)
+          case None => Migration(inProgress.description, new Date(inProgress.authoredAtAsLong), inProgress.fetch, inProgress.upStages,inProgress.mapping)
         }
     }
   }
