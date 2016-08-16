@@ -60,8 +60,8 @@ class PartialMigration {
     if (description.isEmpty) errors("description") = "must be present"
     if (authoredAt.isEmpty) errors("authoredAt") = "must be present"
     if (!authoredAt.isEmpty && authoredAtAsLong < 1) errors("authoredAt") = "must be a number greater than zero"
-    if (fetch.isEmpty) errors("fetch") = "must be present"
     if (upStages.isEmpty) errors("up") = "must be present"
+    if ((fetch.isEmpty && !mapping.isEmpty) || (!fetch.isEmpty && mapping.isEmpty)) errors("mapping-fetch") = "must be together"
 
     if (errors.nonEmpty) Some(errors.toMap) else None
   }
@@ -158,16 +158,18 @@ class Parser {
     inProgress.validate match {
       case Some(errors) => throw new InvalidMigrationException(errors)
       case None =>
-
-        inProgress.downStages match {
-          case Some(downLines) =>
-            if (downLines.forall(line => line.isEmpty)) {
-              Migration(inProgress.description, new Date(inProgress.authoredAtAsLong), inProgress.fetch, inProgress.upStages, inProgress.mapping, None)
-            } else {
-              Migration(inProgress.description, new Date(inProgress.authoredAtAsLong), inProgress.fetch, inProgress.upStages, inProgress.mapping, Some(downLines))
-            }
-          case None => Migration(inProgress.description, new Date(inProgress.authoredAtAsLong), inProgress.fetch, inProgress.upStages,inProgress.mapping)
-        }
+        if(!inProgress.fetch.isEmpty)
+          Migration(inProgress.description, new Date(inProgress.authoredAtAsLong), inProgress.fetch, inProgress.upStages, inProgress.mapping)
+        else
+          inProgress.downStages match {
+            case Some(downLines) =>
+              if (downLines.forall(line => line.isEmpty)) {
+                Migration(inProgress.description, new Date(inProgress.authoredAtAsLong), inProgress.upStages, None)
+              } else {
+                Migration(inProgress.description, new Date(inProgress.authoredAtAsLong), inProgress.upStages, Some(downLines))
+              }
+            case None => Migration(inProgress.description, new Date(inProgress.authoredAtAsLong), inProgress.upStages)
+          }
     }
   }
 }
