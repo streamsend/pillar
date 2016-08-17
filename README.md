@@ -180,7 +180,7 @@ put the values a map.
         )
         
         -- mapping:
-         -- fetch: eager
+        -- fetch: eager
          
         -- table: backup_users->users
         username->/home/mgunes/changeName.sh $name 
