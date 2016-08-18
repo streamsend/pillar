@@ -109,8 +109,8 @@ class ParserSpec extends FunSpec with BeforeAndAfter with ShouldMatchers {
       }
     }
 
-    describe("1370028265000_modify_values_person.cql") {
-      val migrationPath = "src/test/resources/pillar/migrations/faker/1370028265000_modify_values_person.cql"
+    describe("1370028265000_modify_values_person_eager.cql") {
+      val migrationPath = "src/test/resources/pillar/migrations/faker/1370028265000_modify_values_person_eager.cql"
 
       it("returns a migration object") {
         val resource = new FileInputStream(migrationPath)
@@ -131,6 +131,31 @@ class ParserSpec extends FunSpec with BeforeAndAfter with ShouldMatchers {
         migration.mapping.size should equal(1)
         migration.mapping(0).tableName should equal("test_person")
         migration.mapping(0).columns.contains("point")
+      }
+    }
+
+    describe("1370028266000_modify_values_person_lazy.cql") {
+      val migrationPath = "src/test/resources/pillar/migrations/faker/1370028266000_modify_values_person_lazy.cql"
+
+      it("returns a migration object") {
+        val resource = new FileInputStream(migrationPath)
+        Parser().parse(resource).getClass should be(classOf[IrreversibleModifiableMigration])
+      }
+
+      it("assigns fetch") {
+        val resource = new FileInputStream(migrationPath)
+        val migration = Parser().parse(resource).asInstanceOf[IrreversibleModifiableMigration]
+        migration.fetch should equal ("lazy")
+      }
+
+      it("assigns a mapping sections") {
+        val resource = new FileInputStream(migrationPath)
+        val migration = Parser().parse(resource).asInstanceOf[IrreversibleModifiableMigration]
+
+
+        migration.mapping.size should equal(1)
+        migration.mapping(0).tableName should equal("test_person_lazy")
+        migration.mapping(0).columns.contains("surname")
       }
     }
 

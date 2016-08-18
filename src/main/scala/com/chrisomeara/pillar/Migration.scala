@@ -2,7 +2,6 @@ package com.chrisomeara.pillar
 
 import java.util.Date
 
-import com.chrisomeara.pillar.cli.CqlStatement
 import com.chrisomeara.pillar.modify.{CqlStrategy, EagerFetch}
 import com.datastax.driver.core._
 import com.datastax.driver.core.querybuilder.QueryBuilder
@@ -49,11 +48,8 @@ trait Migration {
     insertIntoAppliedMigrations(session)
   }
 
-  def executeDownStatement(session: Session)
-
-  def executeTableStatement(session: Session): Unit = {
-
-  }
+  def executeDownStatement(session: Session) = {}
+  def executeTableStatement(session: Session): Unit = {}
 
   protected def deleteFromAppliedMigrations(session: Session) {
     session.execute(QueryBuilder.
@@ -82,14 +78,14 @@ class IrreversibleMigration(val description: String, val authoredAt: Date, val u
 }
 
 class ReversibleMigrationWithNoOpDown(val description: String, val authoredAt: Date, val up: Seq[String]) extends Migration {
-  def executeDownStatement(session: Session) {
+  override def executeDownStatement(session: Session) {
     deleteFromAppliedMigrations(session)
   }
 
 }
 
 class ReversibleMigration(val description: String, val authoredAt: Date, val up: Seq[String], val down: Seq[String]) extends Migration {
-  def executeDownStatement(session: Session) {
+  override def executeDownStatement(session: Session) {
     down.foreach(session.execute)
     deleteFromAppliedMigrations(session)
   }

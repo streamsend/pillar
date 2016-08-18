@@ -2,7 +2,6 @@ package com.chrisomeara.pillar
 
 import java.util.Date
 
-import com.chrisomeara.pillar.cli.CqlStatement
 import com.chrisomeara.pillar.modify.CqlStrategy
 import com.datastax.driver.core._
 import com.typesafe.config.ConfigFactory
@@ -63,7 +62,6 @@ class IrreversibleModifiableMigration(val description: String, val authoredAt: D
       var defaultInsertStatement : String = buildDefaultInsertStatement(i.tableName, i.columns)
 
       while(iterator.hasNext) {
-        val t1 = System.nanoTime()
         var row: Row = iterator.next()
         insert.append(defaultInsertStatement)
         insert.append(i.findValuesOfColumns(row, session))
@@ -95,12 +93,5 @@ class IrreversibleModifiableMigration(val description: String, val authoredAt: D
 
     dis
   }
-
-  override def executeDownStatement(session: Session) {
-    //throw new IrreversibleModifiableMigrationException(this)
-  }
-}
-
-object IrreversibleModifiableMigration {
 
 }

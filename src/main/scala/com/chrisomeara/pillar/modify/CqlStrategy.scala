@@ -34,7 +34,9 @@ class LazyFetch extends FetchType {
         query = pattern.replaceFirstIn(query, realValue.toString)
       }
     }
-    session.execute(query).one().getObject(columnProperty.name).toString.trim
+    val result: String = session.execute(query).one().getObject(columnProperty.name).toString.trim
+
+    result
   }
 }
 
@@ -48,14 +50,14 @@ class EagerFetch extends FetchType {
     for(i<-0 until keys.size) {
       if(keys(i).contains("$")) {
         val pattern = "('\\$|')"
-        var parameter: Array[String] = keys(0).split(pattern)
+        var parameter: Array[String] = keys(i).split(pattern)
         localKeys += row.getObject(parameter(1)).toString.trim
       }
       else
         localKeys += keys(i)
     }
-
     val result: String = eagerMap.get(localKeys).get.trim
+
     result
   }
 

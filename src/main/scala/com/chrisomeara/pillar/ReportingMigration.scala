@@ -18,7 +18,7 @@ class ReportingMigration(reporter: Reporter, wrapped: Migration) extends Migrati
     wrapped.executeTableStatement(session)
   }
 
-  def executeDownStatement(session: Session) {
+  override def executeDownStatement(session: Session) {
     reporter.reversing(wrapped)
     wrapped.executeDownStatement(session)
   }

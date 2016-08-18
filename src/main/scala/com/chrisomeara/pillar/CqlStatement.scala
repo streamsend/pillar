@@ -1,6 +1,5 @@
-package com.chrisomeara.pillar.cli
+package com.chrisomeara.pillar
 
-import com.chrisomeara.pillar.MigrateeTable
 import com.chrisomeara.pillar.modify.{CqlStrategy, EagerFetch}
 import com.datastax.driver.core._
 
@@ -24,6 +23,7 @@ object CqlStatement {
       findKeys += keysArr(1).trim
     }
     val cqlStatement: CqlStatement = new CqlStatement(arr(1).trim, arr(2).trim, keys, findKeys)
+
     cqlStatement
   }
 

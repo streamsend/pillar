@@ -23,6 +23,8 @@ class ShStrategy extends ModifyStrategy{
       else
         processSh += " " + arr(j)
     }
-    Process(processSh).!!.trim
+    val result: String = Process(processSh).!!.trim
+
+    result
   }
 }
