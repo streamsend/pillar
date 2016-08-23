@@ -62,7 +62,7 @@ class MigrateeTable {
 
     columns.keySet.foreach((key: String) => {
       try {
-        result = columns.get(key).get.modifyOperation.modify(columns.get(key).get, row, session)
+        result = columns(key).modifyOperation.modify(columns(key), row, session)
 
         if (cassandraStringDataTypes.contains(columns.get(key).get.dataType))
           valuesStatement.append("'" + result + "',")

@@ -1,11 +1,11 @@
 package com.chrisomeara.pillar
 
-import com.datastax.driver.core.exceptions.InvalidQueryException
-import org.scalatest.{BeforeAndAfter, FeatureSpec, GivenWhenThen}
-import org.scalatest.matchers.ShouldMatchers
-import com.datastax.driver.core.Cluster
-import com.datastax.driver.core.querybuilder.QueryBuilder
 import com.chrisomeara.pillar.cli.App
+import com.datastax.driver.core.Cluster
+import com.datastax.driver.core.exceptions.InvalidQueryException
+import com.datastax.driver.core.querybuilder.QueryBuilder
+import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.{BeforeAndAfter, FeatureSpec, GivenWhenThen}
 
 class PillarCommandLineAcceptanceSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfter with ShouldMatchers with AcceptanceAssertions {
   val seedAddress = sys.env.getOrElse("PILLAR_SEED_ADDRESS", "127.0.0.1")

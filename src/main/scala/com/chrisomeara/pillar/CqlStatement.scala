@@ -12,8 +12,7 @@ case class CqlStatement(val value: String, val tableName: String, val keys: Seq[
 
 object CqlStatement {
   def parseCqlStatement(query: String): CqlStatement = {
-    val pattern = "(select|from|where|and|or)"
-    val arr: Array[String] = query.split(pattern)
+    val arr: Array[String] = query.split("(select|from|where|and|or|distinct|count|limit|in|not)")
     var keys: mutable.MutableList[String] = new mutable.MutableList[String]()
     var findKeys: mutable.MutableList[String] = new mutable.MutableList[String]()
 
@@ -28,7 +27,7 @@ object CqlStatement {
   }
 
   def createCqlStrategy(migrateeTable: MigrateeTable, session: Session, key: String, fetchLimit: Int): CqlStrategy = {
-    val cqlStatement: CqlStatement = parseCqlStatement(migrateeTable.columns.get(key).get.valueSource)
+    val cqlStatement: CqlStatement = parseCqlStatement(migrateeTable.columns(key).valueSource)
     var eagerMap: mutable.Map[Seq[String], String] = mutable.Map[Seq[String], String]()
 
     val statement: Statement = new SimpleStatement("select * from " + cqlStatement.tableName)

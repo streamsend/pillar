@@ -46,25 +46,25 @@ class IrreversibleModifiableMigration(val description: String, val authoredAt: D
     primaryKeyNullControl()
 
     //create batch statements for each table
-    for(i <- mapping) {
+    for(mappingTable <- mapping) {
       //create batch statement
       val insert = mutable.StringBuilder.newBuilder
       insert.append("BEGIN BATCH ")
       var batchCount: Int = 0
       var total: Int = 0
 
-      val statement: Statement = new SimpleStatement("select * from " + i.mappedTableName)
+      val statement: Statement = new SimpleStatement("select * from " + mappingTable.mappedTableName)
       statement.setFetchSize(fetchLimit)
 
       var resultSet : ResultSet = session.execute(statement)
       var iterator = resultSet.iterator()
 
-      var defaultInsertStatement : String = buildDefaultInsertStatement(i.tableName, i.columns)
+      var defaultInsertStatement : String = buildDefaultInsertStatement(mappingTable.tableName, mappingTable.columns)
 
       while(iterator.hasNext) {
         var row: Row = iterator.next()
         insert.append(defaultInsertStatement)
-        insert.append(i.findValuesOfColumns(row, session))
+        insert.append(mappingTable.findValuesOfColumns(row, session))
 
         batchCount += 1
         if(batchCount == batchLimit) { //against batch statement too large error

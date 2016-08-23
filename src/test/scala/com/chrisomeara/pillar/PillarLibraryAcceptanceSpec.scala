@@ -4,7 +4,7 @@ import java.util.Date
 
 import com.chrisomeara.pillar.modify.{CqlStrategy, NoModify, ShStrategy}
 import com.datastax.driver.core.Cluster
-import com.datastax.driver.core.exceptions.InvalidQueryException
+import com.datastax.driver.core.exceptions.{InvalidQueryException, OperationTimedOutException}
 import com.datastax.driver.core.querybuilder.QueryBuilder
 import org.scalatest.{BeforeAndAfter, FeatureSpec, GivenWhenThen, Matchers}
 
@@ -157,6 +157,10 @@ class PillarLibraryAcceptanceSpec extends FeatureSpec with GivenWhenThen with Be
       session.execute("DROP KEYSPACE %s".format(keyspaceName))
     } catch {
       case ok: InvalidQueryException =>
+      case te: OperationTimedOutException => {
+      /*  if(session.execute("SELECT * FROM system_schema.keyspaces where keyspace_name = '" + keyspaceName + "';").all().size() == 1)
+          te.printStackTrace()*/
+      }
     }
   }
 

@@ -36,7 +36,7 @@ create table test_person_lazy (
 -- fetch: lazy
 
 -- table: person_lazy->test_person_lazy
-surname->select surname from person_lazy where name = '$name'
+surname->select surname from person_lazy where name in ('$name') and x = '$age' limit 1
 name->/home/mgunes/IdeaProjects/pillar/src/test/resources/pillar/test_person_name.sh $name test
 -- end:
 
