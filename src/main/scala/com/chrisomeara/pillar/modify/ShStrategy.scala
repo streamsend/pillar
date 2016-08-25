@@ -18,7 +18,7 @@ class ShStrategy extends ModifyStrategy{
     for (j <- 1 to arr.size - 1) {
       if (arr(j).contains("$")) {
         var parameter: Array[String] = arr(j).split("\\$") //variable parameter
-        processSh += " " + row.getObject(parameter(1))
+        processSh += " " + row.get(parameter(1), columnProperty.columnClass)
       }
       else
         processSh += " " + arr(j)

@@ -14,6 +14,7 @@ import scala.collection.mutable
 class IrreversibleModifiableMigration(val description: String, val authoredAt: Date, val fetch1: String, val up: Seq[String], val mapping1: Seq[MigrateeTable]) extends Migration {
   val fetch: String = fetch1
   val mapping: Seq[MigrateeTable] = mapping1
+  private val batchStatement: BatchStatement = new BatchStatement()
 
   def primaryKeyNullControl(): Unit = {
     mapping.foreach((migrateTable: MigrateeTable) => {
@@ -48,8 +49,6 @@ class IrreversibleModifiableMigration(val description: String, val authoredAt: D
     //create batch statements for each table
     for(mappingTable <- mapping) {
       //create batch statement
-      val insert = mutable.StringBuilder.newBuilder
-      insert.append("BEGIN BATCH ")
       var batchCount: Int = 0
       var total: Int = 0
 
@@ -59,27 +58,25 @@ class IrreversibleModifiableMigration(val description: String, val authoredAt: D
       var resultSet : ResultSet = session.execute(statement)
       var iterator = resultSet.iterator()
 
-      var defaultInsertStatement : String = buildDefaultInsertStatement(mappingTable.tableName, mappingTable.columns)
+      var defaultInsertStatement : PreparedStatement = session.prepare(buildDefaultInsertStatement(mappingTable.tableName, mappingTable.columns))
+      //var insert: BoundStatement = new BoundStatement(defaultInsertStatement)
 
       while(iterator.hasNext) {
         var row: Row = iterator.next()
-        insert.append(defaultInsertStatement)
-        insert.append(mappingTable.findValuesOfColumns(row, session))
+
+        //var insert: BoundStatement = new BoundStatement(mappingTable.findValuesOfColumns(row, session))
+        batchStatement.add(mappingTable.findValuesOfColumns(row, session))
 
         batchCount += 1
         if(batchCount == batchLimit) { //against batch statement too large error
+          session.execute(batchStatement)
+          batchStatement.clear()
           batchCount = 0
-          insert.append(" APPLY BATCH");
-          session.execute(insert.toString())
-          //println(total += batchCount)
-          insert.clear
-          insert.append("BEGIN BATCH ")
         }
       }
       //run the batch statement
-      insert.append(" APPLY BATCH;")
       //println(insert.toString())
-      session.execute(insert.toString())
+      session.execute(batchStatement)
       println("Last Batch has finished")
     }
   }
@@ -90,6 +87,10 @@ class IrreversibleModifiableMigration(val description: String, val authoredAt: D
     columns.keySet.foreach((key: String) =>  dis += key + ",")
     dis = dis.substring(0, dis.size - 1) //delete last comma
     dis += ") VALUES ("
+
+    columns.keySet.foreach(_ => dis += "?,")
+    dis = dis.substring(0, dis.size - 1) //delete last comma
+    dis += ");"
 
     dis
   }

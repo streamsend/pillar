@@ -38,7 +38,7 @@ class PillarLibraryAcceptanceSpec extends FeatureSpec with GivenWhenThen with Be
   columnProperty = new ColumnProperty("point")
   columnProperty.dataType = "int"
   columnProperty.valueSource = "select point from customer where name = '$name'"
-  columnProperty.modifyOperation = new CqlStrategy
+  columnProperty.modifyOperation = new CqlStrategy(migrateeTable.mappedTableName)
   migrateeTable.columns += ("point" -> columnProperty)
 
   columnProperty = new ColumnProperty("surname")
@@ -88,7 +88,7 @@ class PillarLibraryAcceptanceSpec extends FeatureSpec with GivenWhenThen with Be
   columnProperty_lazy = new ColumnProperty("surname")
   columnProperty_lazy.dataType = "text"
   columnProperty_lazy.valueSource = "select surname from person_lazy where name = '$name'"
-  columnProperty_lazy.modifyOperation = new CqlStrategy
+  columnProperty_lazy.modifyOperation = new CqlStrategy(migrateeTable.mappedTableName)
   migrateeTable_Lazy.columns += ("surname" -> columnProperty)
 
   migrateeTable_Lazy.mappedTableColumns = new mutable.MutableList[String]()

@@ -9,7 +9,8 @@ import com.datastax.driver.core.{Row, Session}
 class NoModify extends ModifyStrategy{
 
   override def modify(columnProperty: ColumnProperty, row: Row, session: Session): String = {
-    val defaultValue: String = row.getObject(columnProperty.name).toString.trim
+    val defaultValue = row.get(columnProperty.name, columnProperty.columnClass).toString.trim
+    //val defaultValue: String = row.getString(columnProperty.name).toString.trim
     defaultValue
   }
 }

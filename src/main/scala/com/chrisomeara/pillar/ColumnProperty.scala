@@ -11,5 +11,6 @@ class ColumnProperty(columnName: String) {
   var dataType: String = _
   var valueSource: String =  "no-source"
   var modifyOperation: ModifyStrategy = new NoModify
+  var columnClass: Class[_] = _
 
 }

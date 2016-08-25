@@ -1,6 +1,6 @@
 package com.chrisomeara.pillar
 
-import com.datastax.driver.core.{ColumnMetadata, Row, Session, TableMetadata}
+import com.datastax.driver.core._
 
 import scala.collection.mutable
 
@@ -44,40 +44,83 @@ class MigrateeTable {
       var column:ColumnMetadata = iterator.next()
       var columnName = column.getName
       var dataType = column.getType.toString
+      var columnClass = column.getType.getClass
 
       if(columns.contains(columnName)) {
         columns.get(columnName).get.dataType = dataType
+        if(cassandraStringDataTypes.contains(dataType))
+          columns.get(columnName).get.columnClass = classOf[String]
+        else
+          columns.get(columnName).get.columnClass = classOf[Integer]
       }
       else {
         var columnProperty = new ColumnProperty(columnName)
         columnProperty.dataType = dataType
+        if(cassandraStringDataTypes.contains(dataType))
+          columnProperty.columnClass = classOf[String]
+        else
+          columnProperty.columnClass = classOf[Int]
         columns += (columnName -> columnProperty)
       }
     }
   }
 
-  def findValuesOfColumns(row: Row, session: Session): String = {
-    var result: Any = ""
-    val valuesStatement = mutable.StringBuilder.newBuilder
+  def findValuesOfColumns(row: Row, session: Session):BoundStatement = {
+    var result: AnyRef = null
+    val valuesStatement: mutable.MutableList[AnyRef] = new mutable.MutableList[AnyRef]
+    val columnName:  mutable.MutableList[String] = new mutable.MutableList[String]
+    val columnValue:  mutable.MutableList[AnyRef] = new mutable.MutableList[AnyRef]
+    val columnClass:  mutable.MutableList[Class[_<:Any]] = new mutable.MutableList[Class[_<:Any]]
+
+    var i = 0
+    var dis: String = "INSERT INTO " + tableName + " ("
 
     columns.keySet.foreach((key: String) => {
       try {
         result = columns(key).modifyOperation.modify(columns(key), row, session)
+        valuesStatement += result
+        dis += key + ","
+        i = i +1
 
-        if (cassandraStringDataTypes.contains(columns.get(key).get.dataType))
-          valuesStatement.append("'" + result + "',")
-        else
-          valuesStatement.append(result + ",")
+        columnName += columns(key).name
+        columnValue += result
+        columnClass += columns(key).columnClass
       } catch {
         case e : Exception => {
           var result = "null"
-          valuesStatement.append(result + ",")
+          e.printStackTrace()
+          //valuesStatement(i) = null
         }
       }
     })
-    valuesStatement.deleteCharAt(valuesStatement.size-1) //delete last comma
-    valuesStatement.append(");")
-    valuesStatement.toString()
+
+    val valuesStatement2: Array[AnyRef] = valuesStatement.toArray
+    dis = dis.substring(0, dis.size - 1) //delete last comma
+    dis += ") VALUES ("
+
+    for(p<-0 until i) {dis += "?,"}
+    dis = dis.substring(0, dis.size - 1) //delete last comma
+    dis += ");"
+
+    val preparedStatement: PreparedStatement = session.prepare(dis)
+    val boundStatement: BoundStatement = new BoundStatement(preparedStatement)
+
+    /*for(p<-0 until i) {
+      boundStatement.set(columnName(p), columnValue(p), columnClass(p))
+    }*/
+
+    for(p<-0 until i) {
+      if(columnClass(p).getName.contains("Integer")) {
+        var xx: Int = Integer.parseInt(columnValue(p).toString)
+        boundStatement.setInt(columnName(p), xx)
+      }
+      else
+        boundStatement.setString(columnName(p), columnValue(p).asInstanceOf[String])
+    }
+
+   // boundStatement.set("name", "14", classOf[String])
+    //boundStatement.set("name", 14, classOf[Int])
+    boundStatement.bind()
   }
 
   def primaryKeyNullControl(): Boolean = {

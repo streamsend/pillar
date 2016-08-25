@@ -131,10 +131,10 @@ class Parser {
           try {
             var columnProperty = new ColumnProperty(arr(0))
             columnProperty.valueSource = arr(1)
-            if(arr(1).contains(".sh"))
+            if(arr(1).matches("(select)( )*[a-z]*( )*(from)( )*[a-zA-Z0-9$'= ]*"))
+              columnProperty.modifyOperation = new CqlStrategy(migrateeTable.mappedTableName)
+            else if(arr(1).contains(".sh"))
               columnProperty.modifyOperation = new ShStrategy
-            else if(arr(1).contains("select"))
-              columnProperty.modifyOperation = new CqlStrategy
             migrateeTable.columns += (arr(0) -> columnProperty)
           } catch {
             case e : Exception => println(e)
