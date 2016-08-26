@@ -8,6 +8,6 @@ import com.datastax.driver.core.{Row, Session}
   */
 trait ModifyStrategy {
 
-  def modify (columnProperty: ColumnProperty, row: Row, session: Session): String
+  def modify (columnProperty: ColumnProperty, row: Row, session: Session): AnyRef
 
 }

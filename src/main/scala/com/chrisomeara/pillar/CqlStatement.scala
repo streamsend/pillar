@@ -12,18 +12,20 @@ case class CqlStatement(val value: String, val tableName: String, val keys: Seq[
 
 object CqlStatement {
   def parseCqlStatement(query: String): CqlStatement = {
-    val arr: Array[String] = query.split("(select|from|where|and|or)")
+    //val arr: Array[String] = query.split("(select|from|where|and|or)")
+    val pattern = "(( )*(in)( )*)?'?\\$[a-z]*'?".r
     var keys: mutable.MutableList[String] = new mutable.MutableList[String]()
     var findKeys: mutable.MutableList[String] = new mutable.MutableList[String]()
 
-    for(i<-3 until arr.size) {
+    /*for(i<-3 until arr.size) {
       var keysArr = arr(i).split("=")
       keys += keysArr(0).trim
       findKeys += keysArr(1).trim
-    }
-    val cqlStatement: CqlStatement = new CqlStatement(arr(1).trim, arr(2).trim, keys, findKeys)
+    }*/
+//    val cqlStatement: CqlStatement = new CqlStatement(arr(1).trim, arr(2).trim, keys, findKeys)
 
-    cqlStatement
+//    cqlStatement
+    null
   }
 
   def createCqlStrategy(migrateeTable: MigrateeTable, session: Session, key: String, fetchLimit: Int): CqlStrategy = {

@@ -44,33 +44,46 @@ class MigrateeTable {
       var column:ColumnMetadata = iterator.next()
       var columnName = column.getName
       var dataType = column.getType.toString
-      var columnClass = column.getType.getClass
+      var columnClass = column.getClass
 
       if(columns.contains(columnName)) {
-        columns.get(columnName).get.dataType = dataType
-        if(cassandraStringDataTypes.contains(dataType))
-          columns.get(columnName).get.columnClass = classOf[String]
-        else
-          columns.get(columnName).get.columnClass = classOf[Integer]
+          columns(columnName).dataType = dataType
+          columns(columnName).columnClass = findClass(dataType) //getClasss dene
       }
       else {
         var columnProperty = new ColumnProperty(columnName)
         columnProperty.dataType = dataType
-        if(cassandraStringDataTypes.contains(dataType))
-          columnProperty.columnClass = classOf[String]
-        else
-          columnProperty.columnClass = classOf[Int]
+        columnProperty.columnClass = findClass(dataType)
         columns += (columnName -> columnProperty)
       }
     }
   }
 
-  def findValuesOfColumns(row: Row, session: Session):BoundStatement = {
+  def findClass(dataType: String): Class[_] = {
+    var fClass: Class[_] = null
+
+    dataType match {
+      case "decimal" => fClass = classOf[java.math.BigDecimal]
+      case "float" => fClass = classOf[java.lang.Float]
+      case "double" => fClass = classOf[java.lang.Double]
+      case "varint" => fClass = classOf[java.math.BigInteger]
+      case "timestamp" => fClass = classOf[java.util.Date]
+      case "timeuuid" => fClass = classOf[java.util.UUID]
+      case "bigint" => fClass = classOf[java.lang.Long]
+      case "text" => fClass = classOf[java.lang.String]
+      case "varchar" => fClass = classOf[java.lang.String]
+      case "int" => fClass = classOf[java.lang.Integer]
+    }
+
+    fClass
+  }
+
+  def findValuesOfColumns(row: Row, session: Session): BoundStatement = {
     var result: AnyRef = null
     val valuesStatement: mutable.MutableList[AnyRef] = new mutable.MutableList[AnyRef]
     val columnName:  mutable.MutableList[String] = new mutable.MutableList[String]
     val columnValue:  mutable.MutableList[AnyRef] = new mutable.MutableList[AnyRef]
-    val columnClass:  mutable.MutableList[Class[_<:Any]] = new mutable.MutableList[Class[_<:Any]]
+    val columnClassName:  mutable.MutableList[String] = new mutable.MutableList[String]
 
     var i = 0
     var dis: String = "INSERT INTO " + tableName + " ("
@@ -83,13 +96,12 @@ class MigrateeTable {
         i = i +1
 
         columnName += columns(key).name
-        columnValue += result
-        columnClass += columns(key).columnClass
+        columnValue += result.asInstanceOf[AnyRef]
+        columnClassName += columns(key).dataType
       } catch {
         case e : Exception => {
           var result = "null"
           e.printStackTrace()
-          //valuesStatement(i) = null
         }
       }
     })
@@ -105,21 +117,22 @@ class MigrateeTable {
     val preparedStatement: PreparedStatement = session.prepare(dis)
     val boundStatement: BoundStatement = new BoundStatement(preparedStatement)
 
-    /*for(p<-0 until i) {
-      boundStatement.set(columnName(p), columnValue(p), columnClass(p))
-    }*/
-
     for(p<-0 until i) {
-      if(columnClass(p).getName.contains("Integer")) {
-        var xx: Int = Integer.parseInt(columnValue(p).toString)
-        boundStatement.setInt(columnName(p), xx)
+      columnClassName(p) match {
+        case "decimal" => boundStatement.setDecimal(columnName(p), columnValue(p).asInstanceOf[java.math.BigDecimal])
+        case "float" => boundStatement.setFloat(columnName(p), columnValue(p).asInstanceOf[java.lang.Float])
+        case "double" =>boundStatement.setDouble(columnName(p), columnValue(p).asInstanceOf[java.lang.Double])
+        case "varint" => boundStatement.setVarint(columnName(p), columnValue(p).asInstanceOf[java.math.BigInteger])
+        case "timestamp" => boundStatement.setTimestamp(columnName(p), columnValue(p).asInstanceOf[java.util.Date])
+        case "timeuuid" => boundStatement.setUUID(columnName(p), columnValue(p).asInstanceOf[java.util.UUID])
+        case "bigint" => boundStatement.setLong(columnName(p), columnValue(p).asInstanceOf[java.lang.Long])
+        case "int" => boundStatement.setInt(columnName(p), columnValue(p).asInstanceOf[java.lang.Integer])
+        case "varchar" => boundStatement.setString(columnName(p), columnValue(p).asInstanceOf[java.lang.String])
+        case "text" => boundStatement.setString(columnName(p), columnValue(p).asInstanceOf[java.lang.String])
+        case "boolean" => boundStatement.setBool(columnName(p), columnValue(p).asInstanceOf[java.lang.String].asInstanceOf[java.lang.Boolean])
       }
-      else
-        boundStatement.setString(columnName(p), columnValue(p).asInstanceOf[String])
     }
 
-   // boundStatement.set("name", "14", classOf[String])
-    //boundStatement.set("name", 14, classOf[Int])
     boundStatement.bind()
   }
 

@@ -1,7 +1,10 @@
 package com.chrisomeara.pillar.modify
 
+import java.util.Date
+
 import com.chrisomeara.pillar.ColumnProperty
-import com.datastax.driver.core.{BoundStatement, PreparedStatement, Row, Session}
+import com.datastax.driver.core._
+
 import scala.collection.mutable
 
 /**
@@ -10,20 +13,38 @@ import scala.collection.mutable
 class CqlStrategy (val mappedTableName: String) extends ModifyStrategy {
   var fetchType: FetchType = new LazyFetch(mappedTableName)
 
-  override def modify(columnProperty: ColumnProperty, row: Row, session: Session): String = {
-    val result: String = fetchType.modify(columnProperty, row, session)
+  override def modify(columnProperty: ColumnProperty, row: Row, session: Session): AnyRef = {
+    val result: AnyRef = fetchType.modify(columnProperty, row, session).asInstanceOf[AnyRef]
     result
   }
 
 }
 
 trait FetchType {
-  def modify(columnProperty: ColumnProperty, row: Row, session: Session): String
+  def modify(columnProperty: ColumnProperty, row: Row, session: Session): AnyRef
 }
 
 class LazyFetch(val mappedTableName: String) extends FetchType {
+  def findClass(dataType: String): Class[_] = {
+    var fClass: Class[_] = null
 
-  override def modify(columnProperty: ColumnProperty, row: Row, session: Session): String = {
+    dataType match {
+      case "decimal" => fClass = classOf[java.math.BigDecimal]
+      case "float" => fClass = classOf[java.lang.Float]
+      case "double" => fClass = classOf[java.lang.Double]
+      case "varint" => fClass = classOf[java.math.BigInteger]
+      case "timestamp" => fClass = classOf[java.util.Date]
+      case "timeuuid" => fClass = classOf[java.util.UUID]
+      case "bigint" => fClass = classOf[java.lang.Long]
+      case "text" => fClass = classOf[java.lang.String]
+      case "varchar" => fClass = classOf[java.lang.String]
+      case "int" => fClass = classOf[java.lang.Integer]
+    }
+
+    fClass
+  }
+
+  override def modify(columnProperty: ColumnProperty, row: Row, session: Session): AnyRef= {
     var query: String = columnProperty.valueSource
     val valueList: mutable.MutableList[AnyRef] = new mutable.MutableList[AnyRef]
     val valueName: mutable.MutableList[String] = new mutable.MutableList[String]
@@ -34,11 +55,11 @@ class LazyFetch(val mappedTableName: String) extends FetchType {
       val pattern = "(( )*(in)( )*)?'?\\$[a-z]*'?".r
 
       for (m <- pattern.findAllIn(query)) {
-
         if(m.contains("in")) {
           var objName: String = "\\$[a-z]*".r.findFirstIn(m.toString).get
           objName = objName.substring(1) //delete $ sign
           var resultSet = session.execute("select " + objName + "from " + mappedTableName)
+          valueName += objName
 
           var resultList: mutable.MutableList[String] = new mutable.MutableList[String]()
           while(resultSet.iterator().hasNext) {
@@ -46,14 +67,15 @@ class LazyFetch(val mappedTableName: String) extends FetchType {
           }
           var realValue =  resultList
           valueList += realValue
-          valueClassName += realValue.getClass.getName
+          valueClassName += columnProperty.dataType
           query = "'?\\$[a-z]*'?".r.replaceFirstIn(query, "?")
         }
         else if(m.contains("'") == true) {
           objName = m.substring(2, m.size-1)//'$obj', leave from ' and $
           var realValue: AnyRef = row.getObject(objName)
           valueList += realValue
-          valueClassName += realValue.getClass.getName
+          valueClassName += "text"
+          valueName += objName
           query = pattern.replaceFirstIn(query, "?")
         }
         else {
@@ -61,39 +83,45 @@ class LazyFetch(val mappedTableName: String) extends FetchType {
           var realValue: AnyRef = row.getObject(objName)
           valueList += realValue
           query = pattern.replaceFirstIn(query, "?")
-          valueClassName += realValue.getClass.getName
+          valueName += objName
+          valueClassName += "int"
         }
 
-        valueName += objName
         //valueClass += realValue.getClass
-
       }
     }
-
-    val arrValues: Array[AnyRef] = new Array[AnyRef](valueList.size)
 
     val preparedStatement: PreparedStatement = session.prepare(query) //to-do: add a log about invalid query
-    val boundStatement: BoundStatement = new BoundStatement(preparedStatement)
+    var boundStatement: BoundStatement = new BoundStatement(preparedStatement)
 
     for(i<-0 until valueList.size) {
-      //arrValues(i) = valueList(i)
       valueClassName(i) match {
-        case "java.lang.Integer" => boundStatement.setInt(valueName(i), Integer.parseInt(valueList(i).toString))
-        case "java.lang.String" => boundStatement.setString(valueName(i), valueList(i).toString)
-        case _ => println("Unknown data type")
+        case "decimal" => boundStatement.setDecimal(valueClassName(i), valueClassName(i).asInstanceOf[java.math.BigDecimal])
+        case "float" => boundStatement.setFloat(valueClassName(i), valueClassName(i).asInstanceOf[java.lang.Float])
+        case "double" =>boundStatement.setDouble(valueClassName(i), valueClassName(i).asInstanceOf[java.lang.Double])
+        case "varint" => boundStatement.setVarint(valueClassName(i), valueClassName(i).asInstanceOf[java.math.BigInteger])
+        case "timestamp" => boundStatement.setTimestamp(valueClassName(i), valueClassName(i).asInstanceOf[java.util.Date])
+        case "timeuuid" => boundStatement.setUUID(valueClassName(i), valueClassName(i).asInstanceOf[java.util.UUID])
+        case "bigint" => boundStatement.setLong(valueClassName(i), valueClassName(i).asInstanceOf[java.lang.Long])
+        case "int" => boundStatement.setInt(valueName(i), valueClassName(i).asInstanceOf[java.lang.Integer])
+        case "varchar" => boundStatement.setString(valueClassName(i), valueClassName(i))
+        case "text" => boundStatement.setString(valueName(i), valueClassName(i).asInstanceOf[java.lang.String])
+        case "boolean" => boundStatement.setBool(valueName(i), valueClassName(i).asInstanceOf[java.lang.Boolean])
       }
     }
 
-    val result: String = session.execute(boundStatement).one().get(columnProperty.name, columnProperty.columnClass).toString.trim
+    boundStatement.bind()
+    val result: AnyRef = session.execute(boundStatement).one().get(columnProperty.name, columnProperty.columnClass).asInstanceOf[AnyRef]
     result
   }
+
 }
 
 class EagerFetch extends FetchType {
   var eagerMap: mutable.Map[Seq[String], String] = mutable.Map[Seq[String], String]()
   var keys: mutable.MutableList[String] = new mutable.MutableList[String]()
 
-  override def modify(columnProperty: ColumnProperty, row: Row, session: Session): String = {
+  override def modify(columnProperty: ColumnProperty, row: Row, session: Session): AnyRef = {
     var localKeys: mutable.MutableList[String] = new mutable.MutableList[String]()
 
     for(i<-0 until keys.size) {
@@ -109,7 +137,7 @@ class EagerFetch extends FetchType {
       else
         localKeys += keys(i)
     }
-    val result: String = eagerMap.get(localKeys).get.trim
+    val result: AnyRef = eagerMap(localKeys)
     result
   }
 

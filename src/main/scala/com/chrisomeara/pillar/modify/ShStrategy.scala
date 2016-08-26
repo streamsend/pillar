@@ -10,7 +10,7 @@ import scala.sys.process.Process
   */
 class ShStrategy extends ModifyStrategy{
 
-  override def modify(columnProperty: ColumnProperty, row: Row, session: Session): String = {
+  override def modify(columnProperty: ColumnProperty, row: Row, session: Session): AnyRef = {
     var resource: String = columnProperty.valueSource
     val arr: Array[String] = resource.split(" ")
     var processSh: String = "sh " + arr(0) //add path
@@ -23,7 +23,7 @@ class ShStrategy extends ModifyStrategy{
       else
         processSh += " " + arr(j)
     }
-    val result: String = Process(processSh).!!.trim
+    val result: AnyRef = Process(processSh).!!.trim
 
     result
   }

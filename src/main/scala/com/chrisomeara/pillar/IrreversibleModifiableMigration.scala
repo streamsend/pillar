@@ -59,12 +59,10 @@ class IrreversibleModifiableMigration(val description: String, val authoredAt: D
       var iterator = resultSet.iterator()
 
       var defaultInsertStatement : PreparedStatement = session.prepare(buildDefaultInsertStatement(mappingTable.tableName, mappingTable.columns))
-      //var insert: BoundStatement = new BoundStatement(defaultInsertStatement)
 
       while(iterator.hasNext) {
         var row: Row = iterator.next()
 
-        //var insert: BoundStatement = new BoundStatement(mappingTable.findValuesOfColumns(row, session))
         batchStatement.add(mappingTable.findValuesOfColumns(row, session))
 
         batchCount += 1
