@@ -73,6 +73,7 @@ class MigrateeTable {
       case "text" => fClass = classOf[java.lang.String]
       case "varchar" => fClass = classOf[java.lang.String]
       case "int" => fClass = classOf[java.lang.Integer]
+      case "boolean" => fClass = classOf[java.lang.Boolean]
     }
 
     fClass
@@ -129,7 +130,7 @@ class MigrateeTable {
         case "int" => boundStatement.setInt(columnName(p), columnValue(p).asInstanceOf[java.lang.Integer])
         case "varchar" => boundStatement.setString(columnName(p), columnValue(p).asInstanceOf[java.lang.String])
         case "text" => boundStatement.setString(columnName(p), columnValue(p).asInstanceOf[java.lang.String])
-        case "boolean" => boundStatement.setBool(columnName(p), columnValue(p).asInstanceOf[java.lang.String].asInstanceOf[java.lang.Boolean])
+        case "boolean" => boundStatement.setBool(columnName(p), columnValue(p).asInstanceOf[java.lang.Boolean])
       }
     }
 

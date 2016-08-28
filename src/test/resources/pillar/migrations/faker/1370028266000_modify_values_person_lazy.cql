@@ -37,7 +37,7 @@ create table test_person_lazy (
 
 -- table: person_lazy->test_person_lazy
 surname->select surname from person_lazy where name = '$name'
-name->/home/mgunes/IdeaProjects/pillar/src/test/resources/pillar/test_person_name.sh $name test
+name->/home/mustafa/githubProjects/pillar/src/test/resources/pillar/test_person_name.sh $name test
 -- end:
 
 

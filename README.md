@@ -183,7 +183,7 @@ put the values a map.
         -- fetch: eager
          
         -- table: backup_users->users
-        username->/home/mgunes/changeName.sh $name 
+        username->/home/mustafa/changeName.sh $name
         score->select score from score_table where id = $id
         -- end:
         

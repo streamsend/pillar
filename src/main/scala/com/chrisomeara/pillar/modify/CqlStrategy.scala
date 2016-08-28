@@ -1,7 +1,5 @@
 package com.chrisomeara.pillar.modify
 
-import java.util.Date
-
 import com.chrisomeara.pillar.ColumnProperty
 import com.datastax.driver.core._
 
@@ -96,17 +94,17 @@ class LazyFetch(val mappedTableName: String) extends FetchType {
 
     for(i<-0 until valueList.size) {
       valueClassName(i) match {
-        case "decimal" => boundStatement.setDecimal(valueClassName(i), valueClassName(i).asInstanceOf[java.math.BigDecimal])
-        case "float" => boundStatement.setFloat(valueClassName(i), valueClassName(i).asInstanceOf[java.lang.Float])
-        case "double" =>boundStatement.setDouble(valueClassName(i), valueClassName(i).asInstanceOf[java.lang.Double])
-        case "varint" => boundStatement.setVarint(valueClassName(i), valueClassName(i).asInstanceOf[java.math.BigInteger])
-        case "timestamp" => boundStatement.setTimestamp(valueClassName(i), valueClassName(i).asInstanceOf[java.util.Date])
-        case "timeuuid" => boundStatement.setUUID(valueClassName(i), valueClassName(i).asInstanceOf[java.util.UUID])
-        case "bigint" => boundStatement.setLong(valueClassName(i), valueClassName(i).asInstanceOf[java.lang.Long])
-        case "int" => boundStatement.setInt(valueName(i), valueClassName(i).asInstanceOf[java.lang.Integer])
-        case "varchar" => boundStatement.setString(valueClassName(i), valueClassName(i))
-        case "text" => boundStatement.setString(valueName(i), valueClassName(i).asInstanceOf[java.lang.String])
-        case "boolean" => boundStatement.setBool(valueName(i), valueClassName(i).asInstanceOf[java.lang.Boolean])
+        case "decimal" => boundStatement.setDecimal(valueName(i), valueList(i).asInstanceOf[java.math.BigDecimal])
+        case "float" => boundStatement.setFloat(valueName(i), valueList(i).asInstanceOf[java.lang.Float])
+        case "double" =>boundStatement.setDouble(valueName(i), valueList(i).asInstanceOf[java.lang.Double])
+        case "varint" => boundStatement.setVarint(valueName(i), valueList(i).asInstanceOf[java.math.BigInteger])
+        case "timestamp" => boundStatement.setTimestamp(valueName(i), valueList(i).asInstanceOf[java.util.Date])
+        case "timeuuid" => boundStatement.setUUID(valueName(i), valueList(i).asInstanceOf[java.util.UUID])
+        case "bigint" => boundStatement.setLong(valueName(i), valueList(i).asInstanceOf[java.lang.Long])
+        case "int" => boundStatement.setInt(valueName(i), valueList(i).asInstanceOf[java.lang.Integer])
+        case "varchar" => boundStatement.setString(valueName(i), valueList(i).toString)
+        case "text" => boundStatement.setString(valueName(i), valueList(i).asInstanceOf[java.lang.String])
+        case "boolean" => boundStatement.setBool(valueName(i), valueList(i).asInstanceOf[java.lang.Boolean])
       }
     }
 
