@@ -116,7 +116,7 @@ class LazyFetch(val mappedTableName: String) extends FetchType {
 }
 
 class EagerFetch extends FetchType {
-  var eagerMap: mutable.Map[Seq[String], String] = mutable.Map[Seq[String], String]()
+  var eagerMap: mutable.Map[Seq[String], AnyRef] = mutable.Map[Seq[String], AnyRef]()
   var keys: mutable.MutableList[String] = new mutable.MutableList[String]()
 
   override def modify(columnProperty: ColumnProperty, row: Row, session: Session): AnyRef = {

@@ -11,8 +11,7 @@ import scala.collection.mutable
 /**
   * Created by mgunes on 16.08.2016.
   */
-class IrreversibleModifiableMigration(val description: String, val authoredAt: Date, val fetch1: String, val up: Seq[String], val mapping1: Seq[MigrateeTable]) extends Migration {
-  val fetch: String = fetch1
+class IrreversibleModifiableMigration(val description: String, val authoredAt: Date, val fetch: String, val up: Seq[String], val mapping1: Seq[MigrateeTable]) extends Migration {
   val mapping: Seq[MigrateeTable] = mapping1
   private val batchStatement: BatchStatement = new BatchStatement()
 

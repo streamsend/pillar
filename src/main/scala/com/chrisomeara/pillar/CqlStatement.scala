@@ -8,29 +8,37 @@ import scala.collection.mutable
 /**
   * Created by mgunes on 15.08.2016.
   */
-case class CqlStatement(val value: String, val tableName: String, val keys: Seq[String], val findKeys: mutable.MutableList[String])
+case class CqlStatement(val columnName: String, val tableName: String, val keys: Seq[String], val findKeys: mutable.MutableList[String])
 
 object CqlStatement {
   def parseCqlStatement(query: String): CqlStatement = {
-    //val arr: Array[String] = query.split("(select|from|where|and|or)")
-    val pattern = "(( )*(in)( )*)?'?\\$[a-z]*'?".r
+    val pattern = "((( )+(in))|([a-z]+( )+=))( )+'?\\$[a-z]+'?".r
+
     var keys: mutable.MutableList[String] = new mutable.MutableList[String]()
     var findKeys: mutable.MutableList[String] = new mutable.MutableList[String]()
 
-    /*for(i<-3 until arr.size) {
-      var keysArr = arr(i).split("=")
-      keys += keysArr(0).trim
-      findKeys += keysArr(1).trim
-    }*/
-//    val cqlStatement: CqlStatement = new CqlStatement(arr(1).trim, arr(2).trim, keys, findKeys)
+    val matches = pattern.findAllIn(query)
 
-//    cqlStatement
-    null
+    matches.foreach((xx: String) => {
+      if(xx.contains("=")) {
+        val arr: Array[String] = xx.split("( )+=( )+")
+        keys += arr(0).trim
+        findKeys += arr(1).trim
+      }
+      //else for in clause
+    })
+
+    val patternForNames = "(select)( )+[a-z]+( )+(from)( )+[a-z]+( )+".r
+    val matches2: String = patternForNames.findFirstIn(query).get
+    val arr: Array[String] = matches2.split("(select|from)")
+    val cqlStatement: CqlStatement = new CqlStatement(arr(1).trim, arr(2).trim, keys, findKeys)
+
+    cqlStatement
   }
 
   def createCqlStrategy(migrateeTable: MigrateeTable, session: Session, key: String, fetchLimit: Int): CqlStrategy = {
     val cqlStatement: CqlStatement = parseCqlStatement(migrateeTable.columns(key).valueSource)
-    var eagerMap: mutable.Map[Seq[String], String] = mutable.Map[Seq[String], String]()
+    var eagerMap: mutable.Map[Seq[String], AnyRef] = mutable.Map[Seq[String], AnyRef]()
 
     val statement: Statement = new SimpleStatement("select * from " + cqlStatement.tableName)
     statement.setFetchSize(fetchLimit)
@@ -44,7 +52,7 @@ object CqlStatement {
       for(i<-0 until cqlStatement.keys.size) {
         localKeys += row.getObject(cqlStatement.keys(i)).toString
       }
-      eagerMap += (localKeys -> row.getObject(cqlStatement.value).toString)
+      eagerMap += (localKeys -> row.getObject(cqlStatement.columnName))
     }
 
     var eagerFetch: EagerFetch = new EagerFetch()
