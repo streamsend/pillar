@@ -58,7 +58,7 @@ create table test_person (
 -- fetch: eager
 
 -- table: person->test_person
-name->/home/mustafa/githubProjects/pillar/src/test/resources/pillar/test_person_name.sh $name test
+name->/home/mgunes/githubProjects/pillar/src/test/resources/pillar/test_person_name.sh $name test
 point->select point from customer where name = '$name'
 -- end:
 

@@ -31,7 +31,7 @@ class PillarLibraryAcceptanceSpec extends FeatureSpec with GivenWhenThen with Be
 
   var columnProperty = new ColumnProperty("name")
   columnProperty.dataType = "text"
-  columnProperty.valueSource = "/home/mustafa/yenipersonname.sh $name deneme"
+  columnProperty.valueSource = "/home/mgunes/yenipersonname.sh $name deneme"
   columnProperty.modifyOperation = new ShStrategy
   migrateeTable.columns += ("name" -> columnProperty)
 
@@ -81,7 +81,7 @@ class PillarLibraryAcceptanceSpec extends FeatureSpec with GivenWhenThen with Be
 
   var columnProperty_lazy = new ColumnProperty("name")
   columnProperty_lazy.dataType = "text"
-  columnProperty_lazy.valueSource = "/home/mustafa/gihubProjects/pillar/src/test/resources/pillar/test_person_name.sh $name test"
+  columnProperty_lazy.valueSource = "/home/mgunes/gihubProjects/pillar/src/test/resources/pillar/test_person_name.sh $name test"
   columnProperty_lazy.modifyOperation = new ShStrategy
   migrateeTable_Lazy.columns += ("name" -> columnProperty)
 
