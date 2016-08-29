@@ -69,6 +69,7 @@ class MigrateeTable {
       case "varint" => fClass = classOf[java.math.BigInteger]
       case "timestamp" => fClass = classOf[java.util.Date]
       case "timeuuid" => fClass = classOf[java.util.UUID]
+      case "uuid" => fClass = classOf[java.util.UUID]
       case "bigint" => fClass = classOf[java.lang.Long]
       case "text" => fClass = classOf[java.lang.String]
       case "varchar" => fClass = classOf[java.lang.String]
@@ -126,6 +127,7 @@ class MigrateeTable {
         case "varint" => boundStatement.setVarint(columnName(p), columnValue(p).asInstanceOf[java.math.BigInteger])
         case "timestamp" => boundStatement.setTimestamp(columnName(p), columnValue(p).asInstanceOf[java.util.Date])
         case "timeuuid" => boundStatement.setUUID(columnName(p), columnValue(p).asInstanceOf[java.util.UUID])
+        case "uuid" => boundStatement.setUUID(columnName(p), columnValue(p).asInstanceOf[java.util.UUID])
         case "bigint" => boundStatement.setLong(columnName(p), columnValue(p).asInstanceOf[java.lang.Long])
         case "int" => boundStatement.setInt(columnName(p), columnValue(p).asInstanceOf[java.lang.Integer])
         case "varchar" => boundStatement.setString(columnName(p), columnValue(p).asInstanceOf[java.lang.String])

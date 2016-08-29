@@ -1,8 +1,11 @@
 package com.chrisomeara.pillar.modify
 
+import java.util
+
 import com.chrisomeara.pillar.ColumnProperty
 import com.datastax.driver.core._
 
+import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 /**
@@ -33,6 +36,7 @@ class LazyFetch(val mappedTableName: String) extends FetchType {
       case "varint" => fClass = classOf[java.math.BigInteger]
       case "timestamp" => fClass = classOf[java.util.Date]
       case "timeuuid" => fClass = classOf[java.util.UUID]
+      case "uuid" => fClass = classOf[java.util.UUID]
       case "bigint" => fClass = classOf[java.lang.Long]
       case "text" => fClass = classOf[java.lang.String]
       case "varchar" => fClass = classOf[java.lang.String]
@@ -56,16 +60,17 @@ class LazyFetch(val mappedTableName: String) extends FetchType {
         if(m.contains("in")) {
           var objName: String = "\\$[a-z]*".r.findFirstIn(m.toString).get
           objName = objName.substring(1) //delete $ sign
-          var resultSet = session.execute("select " + objName + "from " + mappedTableName)
+          var resultSet = session.execute("select " + objName + " from " + mappedTableName)
           valueName += objName
 
-          var resultList: mutable.MutableList[String] = new mutable.MutableList[String]()
+          var resultList: java.util.List[AnyRef] = new util.ArrayList[AnyRef]()
           while(resultSet.iterator().hasNext) {
-            resultList += resultSet.iterator().next().getObject(objName).toString
+            resultList.add(resultSet.iterator().next().getObject(objName))
           }
-          var realValue =  resultList
+
+          var realValue = resultList
           valueList += realValue
-          valueClassName += columnProperty.dataType
+          valueClassName += realValue.getClass.getName
           query = "'?\\$[a-z]*'?".r.replaceFirstIn(query, "?")
         }
         else if(m.contains("=") && m.contains("'") == true) {
@@ -97,13 +102,14 @@ class LazyFetch(val mappedTableName: String) extends FetchType {
         case "java.math.BigDecimal" => boundStatement.setDecimal(valueName(i), valueList(i).asInstanceOf[java.math.BigDecimal])
         case "java.lang.Float" => boundStatement.setFloat(valueName(i), valueList(i).asInstanceOf[java.lang.Float])
         case "java.lang.Double" =>boundStatement.setDouble(valueName(i), valueList(i).asInstanceOf[java.lang.Double])
-        case "java.math.BigIntege" => boundStatement.setVarint(valueName(i), valueList(i).asInstanceOf[java.math.BigInteger])
+        case "java.math.BigInteger" => boundStatement.setVarint(valueName(i), valueList(i).asInstanceOf[java.math.BigInteger])
         case "java.util.Date" => boundStatement.setTimestamp(valueName(i), valueList(i).asInstanceOf[java.util.Date])
         case "java.util.UUID" => boundStatement.setUUID(valueName(i), valueList(i).asInstanceOf[java.util.UUID])
-        case "java.lang.Long]" => boundStatement.setLong(valueName(i), valueList(i).asInstanceOf[java.lang.Long])
+        case "java.lang.Long" => boundStatement.setLong(valueName(i), valueList(i).asInstanceOf[java.lang.Long])
         case "java.lang.Integer" => boundStatement.setInt(valueName(i), valueList(i).asInstanceOf[java.lang.Integer])
         case "java.lang.String" => boundStatement.setString(valueName(i), valueList(i).asInstanceOf[java.lang.String])
         case "java.lang.Boolean" => boundStatement.setBool(valueName(i), valueList(i).asInstanceOf[java.lang.Boolean])
+        case "java.util.ArrayList" => boundStatement.setList(i, valueList(i).asInstanceOf[java.util.List[AnyRef]])
       }
     }
 
