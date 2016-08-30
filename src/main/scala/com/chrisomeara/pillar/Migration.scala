@@ -2,12 +2,8 @@ package com.chrisomeara.pillar
 
 import java.util.Date
 
-import com.chrisomeara.pillar.modify.{CqlStrategy, EagerFetch}
 import com.datastax.driver.core._
 import com.datastax.driver.core.querybuilder.QueryBuilder
-import com.typesafe.config.ConfigFactory
-
-import scala.collection.mutable
 
 object Migration {
   def apply(description: String, authoredAt: Date, up: Seq[String]): Migration = {

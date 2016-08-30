@@ -8,7 +8,7 @@ import scala.collection.mutable
 /**
   * Created by mgunes on 15.08.2016.
   */
-case class CqlStatement(val columnName: String, val tableName: String, val keys: Seq[String], val findKeys: mutable.MutableList[String])
+case class CqlStatement(columnName: String, tableName: String, keys: Seq[String], findKeys: mutable.MutableList[String])
 
 object CqlStatement {
   def parseCqlStatement(query: String): CqlStatement = {
@@ -29,37 +29,35 @@ object CqlStatement {
     })
 
     val patternForNames = "(select)( )+[a-zA-Z0-9_]+( )+(from)( )+[a-zA-Z0-9_]+( )+".r
-    val matches2: String = patternForNames.findFirstIn(query).get
-    val arr: Array[String] = matches2.split("(select|from)")
+    val arr: Array[String] = patternForNames.findFirstIn(query).get.split("(select|from)")
     val cqlStatement: CqlStatement = new CqlStatement(arr(1).trim, arr(2).trim, keys, findKeys)
-
     cqlStatement
   }
 
   def createCqlStrategy(migrateeTable: MigrateeTable, session: Session, key: String, fetchLimit: Int): CqlStrategy = {
     val cqlStatement: CqlStatement = parseCqlStatement(migrateeTable.columns(key).valueSource)
-    var eagerMap: mutable.Map[Seq[String], AnyRef] = mutable.Map[Seq[String], AnyRef]()
+    val eagerMap: mutable.Map[Seq[String], AnyRef] = mutable.Map[Seq[String], AnyRef]()
 
     val statement: Statement = new SimpleStatement("select * from " + cqlStatement.tableName)
     statement.setFetchSize(fetchLimit)
-    var resultSet: ResultSet = session.execute(statement)
-    var iterator = resultSet.iterator()
+    val resultSet: ResultSet = session.execute(statement)
+    val iterator = resultSet.iterator()
 
     while(iterator.hasNext) {
-      var row: Row = iterator.next()
-      var localKeys: mutable.MutableList[String] = new mutable.MutableList[String]()
+      val row: Row = iterator.next()
+      val localKeys: mutable.MutableList[String] = new mutable.MutableList[String]()
 
-      for(i<-0 until cqlStatement.keys.size) {
+      for(i <- cqlStatement.keys.indices) {
         localKeys += row.getObject(cqlStatement.keys(i)).toString
       }
       eagerMap += (localKeys -> row.getObject(cqlStatement.columnName))
     }
 
-    var eagerFetch: EagerFetch = new EagerFetch()
+    val eagerFetch: EagerFetch = new EagerFetch()
     eagerFetch.eagerMap = eagerMap
     eagerFetch.keys = cqlStatement.findKeys
 
-    var cqlStrategy: CqlStrategy = new CqlStrategy(migrateeTable.mappedTableName)
+    val cqlStrategy: CqlStrategy = new CqlStrategy(migrateeTable.mappedTableName)
     cqlStrategy.fetchType = eagerFetch
 
     cqlStrategy

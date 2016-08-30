@@ -11,20 +11,18 @@ import scala.sys.process.Process
 class ShStrategy extends ModifyStrategy{
 
   override def modify(columnProperty: ColumnProperty, row: Row, session: Session): AnyRef = {
-    var resource: String = columnProperty.valueSource
-    val arr: Array[String] = resource.split(" ")
+    val arr: Array[String] = columnProperty.valueSource.split(" ")
     var processSh: String = "sh " + arr(0) //add path
 
-    for (j <- 1 to arr.size - 1) {
+    for (j <- arr.indices) {
       if (arr(j).contains("$")) {
-        var parameter: Array[String] = arr(j).split("\\$") //variable parameter
+        val parameter: Array[String] = arr(j).split("\\$") //variable parameter
         processSh += " " + row.get(parameter(1), columnProperty.columnClass)
       }
       else
         processSh += " " + arr(j)
     }
     val result: AnyRef = Process(processSh).!!.trim
-
     result
   }
 }

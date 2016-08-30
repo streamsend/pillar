@@ -49,19 +49,14 @@ class IrreversibleModifiableMigration(val description: String, val authoredAt: D
     for(mappingTable <- mapping) {
       //create batch statement
       var batchCount: Int = 0
-      var total: Int = 0
-
       val statement: Statement = new SimpleStatement("select * from " + mappingTable.mappedTableName)
       statement.setFetchSize(fetchLimit)
 
-      var resultSet : ResultSet = session.execute(statement)
-      var iterator = resultSet.iterator()
-
-      var defaultInsertStatement : PreparedStatement = session.prepare(buildDefaultInsertStatement(mappingTable.tableName, mappingTable.columns))
+      val resultSet : ResultSet = session.execute(statement)
+      val iterator = resultSet.iterator()
 
       while(iterator.hasNext) {
-        var row: Row = iterator.next()
-
+        val row: Row = iterator.next()
         batchStatement.add(mappingTable.findValuesOfColumns(row, session))
 
         batchCount += 1
@@ -82,11 +77,11 @@ class IrreversibleModifiableMigration(val description: String, val authoredAt: D
     var dis: String = "INSERT INTO " + tableName + " ("
 
     columns.keySet.foreach((key: String) =>  dis += key + ",")
-    dis = dis.substring(0, dis.size - 1) //delete last comma
+    dis = dis.substring(0, dis.length - 1) //delete last comma
     dis += ") VALUES ("
 
     columns.keySet.foreach(_ => dis += "?,")
-    dis = dis.substring(0, dis.size - 1) //delete last comma
+    dis = dis.substring(0, dis.length - 1) //delete last comma
     dis += ");"
 
     dis

@@ -61,7 +61,7 @@ class PartialMigration {
     if (authoredAt.isEmpty) errors("authoredAt") = "must be present"
     if (!authoredAt.isEmpty && authoredAtAsLong < 1) errors("authoredAt") = "must be a number greater than zero"
     if (upStages.isEmpty) errors("up") = "must be present"
-    if ((fetch.isEmpty && !mapping.isEmpty) || (!fetch.isEmpty && mapping.isEmpty)) errors("mapping-fetch") = "must be together"
+    if ((fetch.isEmpty && mapping.nonEmpty) || (!fetch.isEmpty && mapping.isEmpty)) errors("mapping-fetch") = "must be together"
 
     if (errors.nonEmpty) Some(errors.toMap) else None
   }
@@ -127,9 +127,9 @@ class Parser {
         migrateeTable.mappedTableName = arr(0).trim
       case MatchAttribute("end", _) =>
         for(line <- inProgress.currentColumn) {
-          var arr : Array[String] = line.split("->")
+          val arr : Array[String] = line.split("->")
           try {
-            var columnProperty = new ColumnProperty(arr(0))
+            val columnProperty = new ColumnProperty(arr(0))
             columnProperty.valueSource = arr(1)
             if(arr(1).matches("(select)( )+[a-z_]+( )+(from)( )+[a-z_='\\$ ]+"))
               columnProperty.modifyOperation = new CqlStrategy(migrateeTable.mappedTableName)

@@ -1,5 +1,6 @@
 package com.chrisomeara.pillar
 
+import com.chrisomeara.pillar.modify.BindRow
 import com.datastax.driver.core._
 
 import scala.collection.mutable
@@ -41,111 +42,76 @@ class MigrateeTable {
   def readColumnNamesAndTypes(tableMetadata: TableMetadata): Unit = {
     val iterator = tableMetadata.getColumns.iterator()
     while(iterator.hasNext) {
-      var column:ColumnMetadata = iterator.next()
-      var columnName = column.getName
-      var dataType = column.getType.toString
-      var columnClass = column.getClass
+      val column:ColumnMetadata = iterator.next()
+      val columnName = column.getName
 
       if(columns.contains(columnName)) {
-          columns(columnName).dataType = dataType
-          columns(columnName).columnClass = findClass(dataType) //getClasss dene
+          columns(columnName).dataType = column.getType.toString
+          columns(columnName).columnClass = TypeBinding.findClass(columns(columnName).dataType)
       }
       else {
-        var columnProperty = new ColumnProperty(columnName)
-        columnProperty.dataType = dataType
-        columnProperty.columnClass = findClass(dataType)
+        val columnProperty = new ColumnProperty(columnName)
+        columnProperty.dataType = column.getType.toString
+        columnProperty.columnClass = TypeBinding.findClass(columns(columnName).dataType)
         columns += (columnName -> columnProperty)
       }
     }
   }
 
-  def findClass(dataType: String): Class[_] = {
-    var fClass: Class[_] = null
-
-    dataType match {
-      case "decimal" => fClass = classOf[java.math.BigDecimal]
-      case "float" => fClass = classOf[java.lang.Float]
-      case "double" => fClass = classOf[java.lang.Double]
-      case "varint" => fClass = classOf[java.math.BigInteger]
-      case "timestamp" => fClass = classOf[java.util.Date]
-      case "timeuuid" => fClass = classOf[java.util.UUID]
-      case "uuid" => fClass = classOf[java.util.UUID]
-      case "bigint" => fClass = classOf[java.lang.Long]
-      case "text" => fClass = classOf[java.lang.String]
-      case "varchar" => fClass = classOf[java.lang.String]
-      case "int" => fClass = classOf[java.lang.Integer]
-      case "boolean" => fClass = classOf[java.lang.Boolean]
-    }
-
-    fClass
-  }
-
   def findValuesOfColumns(row: Row, session: Session): BoundStatement = {
-    var result: AnyRef = null
-    val valuesStatement: mutable.MutableList[AnyRef] = new mutable.MutableList[AnyRef]
-    val columnName:  mutable.MutableList[String] = new mutable.MutableList[String]
-    val columnValue:  mutable.MutableList[AnyRef] = new mutable.MutableList[AnyRef]
-    val columnClassName:  mutable.MutableList[String] = new mutable.MutableList[String]
+    val bindRowList: mutable.MutableList[BindRow] = buildBindRowList(session, row)
+    val insertStatement: String = buildInsertStatement()
 
-    var i = 0
-    var dis: String = "INSERT INTO " + tableName + " ("
+    val preparedStatement: PreparedStatement = session.prepare(insertStatement)
+    var boundStatement: BoundStatement = new BoundStatement(preparedStatement)
 
-    columns.keySet.foreach((key: String) => {
-      try {
-        result = columns(key).modifyOperation.modify(columns(key), row, session)
-        valuesStatement += result
-        dis += key + ","
-        i = i +1
-
-        columnName += columns(key).name
-        columnValue += result.asInstanceOf[AnyRef]
-        columnClassName += columns(key).dataType
-      } catch {
-        case e : Exception => {
-          var result = "null"
-          e.printStackTrace()
-        }
-      }
-    })
-
-    val valuesStatement2: Array[AnyRef] = valuesStatement.toArray
-    dis = dis.substring(0, dis.size - 1) //delete last comma
-    dis += ") VALUES ("
-
-    for(p<-0 until i) {dis += "?,"}
-    dis = dis.substring(0, dis.size - 1) //delete last comma
-    dis += ");"
-
-    val preparedStatement: PreparedStatement = session.prepare(dis)
-    val boundStatement: BoundStatement = new BoundStatement(preparedStatement)
-
-    for(p<-0 until i) {
-      columnClassName(p) match {
-        case "decimal" => boundStatement.setDecimal(columnName(p), columnValue(p).asInstanceOf[java.math.BigDecimal])
-        case "float" => boundStatement.setFloat(columnName(p), columnValue(p).asInstanceOf[java.lang.Float])
-        case "double" =>boundStatement.setDouble(columnName(p), columnValue(p).asInstanceOf[java.lang.Double])
-        case "varint" => boundStatement.setVarint(columnName(p), columnValue(p).asInstanceOf[java.math.BigInteger])
-        case "timestamp" => boundStatement.setTimestamp(columnName(p), columnValue(p).asInstanceOf[java.util.Date])
-        case "timeuuid" => boundStatement.setUUID(columnName(p), columnValue(p).asInstanceOf[java.util.UUID])
-        case "uuid" => boundStatement.setUUID(columnName(p), columnValue(p).asInstanceOf[java.util.UUID])
-        case "bigint" => boundStatement.setLong(columnName(p), columnValue(p).asInstanceOf[java.lang.Long])
-        case "int" => boundStatement.setInt(columnName(p), columnValue(p).asInstanceOf[java.lang.Integer])
-        case "varchar" => boundStatement.setString(columnName(p), columnValue(p).asInstanceOf[java.lang.String])
-        case "text" => boundStatement.setString(columnName(p), columnValue(p).asInstanceOf[java.lang.String])
-        case "boolean" => boundStatement.setBool(columnName(p), columnValue(p).asInstanceOf[java.lang.Boolean])
-      }
+    for(p <- bindRowList.indices) {
+      boundStatement = TypeBinding.setBoundStatement(
+        boundStatement, bindRowList(p).dataType, bindRowList(p).value, p)
     }
 
     boundStatement.bind()
+  }
+
+  def buildInsertStatement(): String = {
+    val insertStatement = StringBuilder.newBuilder
+    insertStatement.append("INSERT INTO " + tableName + " (")
+    columns.keySet.foreach((key: String) => insertStatement.append(key + ","))
+    insertStatement.deleteCharAt(insertStatement.size-1) //delete last comma
+    insertStatement.append(") VALUES (")
+
+    for(p <- 0 until columns.keySet.size)
+      insertStatement.append("?,")
+
+    insertStatement.deleteCharAt(insertStatement.size-1) //delete last comma
+    insertStatement.append(");")
+
+    insertStatement.toString
+  }
+
+  def buildBindRowList(session: Session, row: Row): mutable.MutableList[BindRow] = {
+    val valuesStatement: mutable.MutableList[AnyRef] = new mutable.MutableList[AnyRef]
+    val bindRowList: mutable.MutableList[BindRow] = new mutable.MutableList[BindRow]
+
+    columns.keySet.foreach(f = (key: String) => {
+      try {
+        val result: AnyRef = columns(key).modifyOperation.modify(columns(key), row, session)
+        valuesStatement += result
+        bindRowList += BindRow(columns(key).name, columns(key).dataType, result)
+      } catch {
+        case e: Exception => e.printStackTrace()
+      }
+    })
+    bindRowList
   }
 
   def primaryKeyNullControl(): Boolean = {
     var control: Boolean = true
     val iterator = primaryKeyColumns.iterator
 
-    while(control == true && iterator.hasNext) {
-      var column = iterator.next()
-      if(columns.get(column).get.valueSource.equalsIgnoreCase("no-source") && !mappedTableColumns.contains(column))
+    while(control && iterator.hasNext) {
+      val column = iterator.next()
+      if(columns(column).valueSource.equalsIgnoreCase("no-source") && !mappedTableColumns.contains(column))
         control = false
     }
     control
