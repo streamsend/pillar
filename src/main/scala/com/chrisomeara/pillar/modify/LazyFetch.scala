@@ -17,18 +17,18 @@ class LazyFetch(val mappedTableName: String) extends FetchType {
     val bindRowList: mutable.MutableList[BindRow] = new mutable.MutableList[BindRow]
 
     if (query.contains("$")) {
-      val pattern = "((( )+(in))|([a-zA-Z0-9_]+( )+=))( )+'?\\$[a-zA-Z0-9_]+'?".r
+      val pattern = "((( )+(in))|([a-zA-Z0-9_]+( )*(=|<|>)))( )*'?\\$[a-zA-Z0-9_]+'?".r
 
       for (matched <- pattern.findAllIn(query)) {
         if(matched.contains("in")) {
-          query = "'?\\$[a-z]*'?".r.replaceFirstIn(query, "?")
+          query = "'?\\$[a-zA-Z0-9_]*'?".r.replaceFirstIn(query, "?")
           bindRowList += bindRowForIn(session, matched)
         }
-        else if(matched.contains("=") && matched.contains("'")) {
+        else if(matched.contains("'")) {
           query = "'\\$[a-zA-Z0-9_]+'".r.replaceFirstIn(query, "?")
           bindRowList += bindRowApostrophe(row, matched)
         }
-        else if(matched.contains("=")){
+        else {
           query = "\\$[a-zA-Z0-9_]+".r.replaceFirstIn(query, "?")
           bindRowList += bindRowNonApostrophe(row, matched)
         }
@@ -62,14 +62,14 @@ class LazyFetch(val mappedTableName: String) extends FetchType {
   }
 
   def bindRowApostrophe(row: Row, matched: String): BindRow = {
-    val arr: Array[String] = matched.split("=")
+    val arr: Array[String] = matched.split("(=|<|>)")
     val objName = arr(1).trim.substring(2, arr(1).trim.length-1)//'$obj', leave from ' and $
     val realValue: AnyRef = row.getObject(objName)
     BindRow(arr(0).trim, realValue.getClass.getName, realValue)
   }
 
   def bindRowNonApostrophe(row: Row, matched: String): BindRow = {
-    val arr: Array[String] = matched.split("=")
+    val arr: Array[String] = matched.split("(=|<|>)")
     val objName = arr(1).trim.substring(1, arr(1).trim.length)
     val realValue: AnyRef = row.getObject(objName)
     BindRow(arr(0).trim, realValue.getClass.getName, realValue)

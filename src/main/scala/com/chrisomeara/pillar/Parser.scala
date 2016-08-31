@@ -131,7 +131,7 @@ class Parser {
           try {
             val columnProperty = new ColumnProperty(arr(0))
             columnProperty.valueSource = arr(1)
-            if(arr(1).matches("(select)( )+[a-z_]+( )+(from)( )+[a-z_='\\$ ]+"))
+            if(arr(1).matches("(select)( )+[a-zA-Z0-9_]+( )+(from)( )+[a-zA-Z0-9_='\\$<> ]+"))
               columnProperty.modifyOperation = new CqlStrategy(migrateeTable.mappedTableName)
             else if(arr(1).contains(".sh"))
               columnProperty.modifyOperation = new ShStrategy
