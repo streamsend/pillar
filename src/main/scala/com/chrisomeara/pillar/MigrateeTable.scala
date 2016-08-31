@@ -52,7 +52,7 @@ class MigrateeTable {
       else {
         val columnProperty = new ColumnProperty(columnName)
         columnProperty.dataType = column.getType.toString
-        columnProperty.columnClass = TypeBinding.findClass(columns(columnName).dataType)
+        columnProperty.columnClass = TypeBinding.findClass(columnProperty.dataType)
         columns += (columnName -> columnProperty)
       }
     }
@@ -66,8 +66,8 @@ class MigrateeTable {
     var boundStatement: BoundStatement = new BoundStatement(preparedStatement)
 
     for(p <- bindRowList.indices) {
-      boundStatement = TypeBinding.setBoundStatement(
-        boundStatement, bindRowList(p).dataType, bindRowList(p).value, p)
+      boundStatement = TypeBinding.setBoundStatementCassandraTypes(
+        boundStatement, bindRowList(p).dataType, bindRowList(p).value, bindRowList(p).columnName)
     }
 
     boundStatement.bind()
@@ -90,13 +90,11 @@ class MigrateeTable {
   }
 
   def buildBindRowList(session: Session, row: Row): mutable.MutableList[BindRow] = {
-    val valuesStatement: mutable.MutableList[AnyRef] = new mutable.MutableList[AnyRef]
     val bindRowList: mutable.MutableList[BindRow] = new mutable.MutableList[BindRow]
 
     columns.keySet.foreach(f = (key: String) => {
       try {
         val result: AnyRef = columns(key).modifyOperation.modify(columns(key), row, session)
-        valuesStatement += result
         bindRowList += BindRow(columns(key).name, columns(key).dataType, result)
       } catch {
         case e: Exception => e.printStackTrace()

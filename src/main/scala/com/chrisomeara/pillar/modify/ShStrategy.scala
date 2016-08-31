@@ -14,8 +14,8 @@ class ShStrategy extends ModifyStrategy{
     val arr: Array[String] = columnProperty.valueSource.split(" ")
     var processSh: String = "sh " + arr(0) //add path
 
-    for (j <- arr.indices) {
-      if (arr(j).contains("$")) {
+    for (j <- 1 until arr.length) {
+      if (arr(j).contains("$") ) {
         val parameter: Array[String] = arr(j).split("\\$") //variable parameter
         processSh += " " + row.get(parameter(1), columnProperty.columnClass)
       }

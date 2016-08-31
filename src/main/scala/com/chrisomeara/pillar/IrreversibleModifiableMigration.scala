@@ -67,7 +67,6 @@ class IrreversibleModifiableMigration(val description: String, val authoredAt: D
         }
       }
       //run the batch statement
-      //println(insert.toString())
       session.execute(batchStatement)
       println("Last Batch has finished")
     }

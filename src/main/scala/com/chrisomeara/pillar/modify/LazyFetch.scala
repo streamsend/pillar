@@ -39,7 +39,7 @@ class LazyFetch(val mappedTableName: String) extends FetchType {
     var boundStatement: BoundStatement = new BoundStatement(preparedStatement)
 
     for(i <- bindRowList.indices) {
-      boundStatement = TypeBinding.setBoundStatement(
+      boundStatement = TypeBinding.setBoundStatementJavaTypes(
         boundStatement, bindRowList(i).dataType, bindRowList(i).value, i)
     }
 

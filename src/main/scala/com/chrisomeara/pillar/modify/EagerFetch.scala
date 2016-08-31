@@ -9,7 +9,7 @@ import scala.collection.mutable
   * Created by mustafa on 31.08.2016.
   */
 class EagerFetch extends FetchType {
-  var eagerMap: mutable.Map[Seq[String], AnyRef] = mutable.Map[Seq[String], AnyRef]()
+  var eagerMap: mutable.Map[Seq[AnyRef], AnyRef] = mutable.Map[Seq[AnyRef], AnyRef]()
   var keys: mutable.MutableList[String] = new mutable.MutableList[String]()
 
   override def modify(columnProperty: ColumnProperty, row: Row, session: Session): AnyRef = {
@@ -17,7 +17,7 @@ class EagerFetch extends FetchType {
 
     keys.foreach((key: String) => {
       if(key.contains("$")) {
-        val pattern = "'?\\$[a-z]*'?".r
+        val pattern = "'?\\$[a-zA-Z0-9_]*'?".r
         var parameter = pattern.findFirstIn(key).get.toString.trim
         if(parameter.contains("'"))
           parameter = parameter.substring(2, parameter.length-1)

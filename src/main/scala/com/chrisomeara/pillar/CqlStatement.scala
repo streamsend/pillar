@@ -36,7 +36,7 @@ object CqlStatement {
 
   def createCqlStrategy(migrateeTable: MigrateeTable, session: Session, key: String, fetchLimit: Int): CqlStrategy = {
     val cqlStatement: CqlStatement = parseCqlStatement(migrateeTable.columns(key).valueSource)
-    val eagerMap: mutable.Map[Seq[String], AnyRef] = mutable.Map[Seq[String], AnyRef]()
+    val eagerMap: mutable.Map[Seq[AnyRef], AnyRef] = mutable.Map[Seq[AnyRef], AnyRef]()
 
     val statement: Statement = new SimpleStatement("select * from " + cqlStatement.tableName)
     statement.setFetchSize(fetchLimit)
