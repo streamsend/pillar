@@ -20,9 +20,13 @@ object TypeBinding {
       case "varchar" => boundStatement.setString(columnName, value.asInstanceOf[java.lang.String])
       case "text" => boundStatement.setString(columnName, value.asInstanceOf[java.lang.String])
       case "boolean" => boundStatement.setBool(columnName, value.asInstanceOf[java.lang.Boolean])
-      case "list" => boundStatement.setList(columnName, value.asInstanceOf[java.util.List[AnyRef]])
-      case "map" => boundStatement.setMap(columnName, value.asInstanceOf[java.util.Map[AnyRef, AnyRef]])
-      case "set" => boundStatement.setSet(columnName, value.asInstanceOf[java.util.Set[AnyRef]])
+      case _ =>
+        if(dataType.contains("list"))
+          boundStatement.setList(columnName, value.asInstanceOf[java.util.List[AnyRef]])
+        else if(dataType.contains("map"))
+          boundStatement.setMap(columnName, value.asInstanceOf[java.util.Map[AnyRef, AnyRef]])
+        else if(dataType.contains("set"))
+          boundStatement.setSet(columnName, value.asInstanceOf[java.util.Set[AnyRef]])
     }
     boundStatement
   }
@@ -40,8 +44,8 @@ object TypeBinding {
       case "java.lang.String" => boundStatement.setString(column, value.asInstanceOf[java.lang.String])
       case "java.lang.Boolean" => boundStatement.setBool(column, value.asInstanceOf[java.lang.Boolean])
       case "java.util.ArrayList" => boundStatement.setList(column, value.asInstanceOf[java.util.List[AnyRef]])
-      case "java.util.HashMap" => boundStatement.setMap(column, value.asInstanceOf[java.util.HashMap[AnyRef, AnyRef]])
-      case "java.util.HashSet" => boundStatement.setSet(column, value.asInstanceOf[java.util.HashSet[AnyRef]])
+      case "java.util.Map" => boundStatement.setMap(column, value.asInstanceOf[java.util.HashMap[AnyRef, AnyRef]])
+      case "java.util.Set" => boundStatement.setSet(column, value.asInstanceOf[java.util.HashSet[AnyRef]])
     }
     boundStatement
   }
@@ -61,10 +65,14 @@ object TypeBinding {
       case "text" => fClass = classOf[java.lang.String]
       case "varchar" => fClass = classOf[java.lang.String]
       case "int" => fClass = classOf[java.lang.Integer]
-      case "list" => fClass = classOf[java.util.List[AnyRef]]
-      case "map" => fClass = classOf[java.util.Map[AnyRef, AnyRef]]
-      case "set" => fClass = classOf[java.util.Set[AnyRef]]
       case "boolean" => fClass = classOf[java.lang.Boolean]
+      case _ =>
+        if(dataType.contains("list"))
+          fClass = classOf[java.util.List[AnyRef]]
+        else if(dataType.contains("map"))
+          fClass = classOf[java.util.Map[AnyRef, AnyRef]]
+        else if(dataType.contains("set"))
+        fClass = classOf[java.util.Set[AnyRef]]
     }
     fClass
   }

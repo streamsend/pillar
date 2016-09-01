@@ -53,7 +53,7 @@ class IrreversibleModifiableMigration(val description: String, val authoredAt: D
 
     if(fetch.equalsIgnoreCase("eager")) {
       if(!isContainsBiggerLessThanOperator)
-        println("Eager converted to lazy becaues of < or > operators")
+        println("Eager converted to lazy because of < or > operators")
       else
         eager(session, fetchLimit)
     }
