@@ -97,7 +97,7 @@ class MigrateeTable {
         val result: AnyRef = columns(key).modifyOperation.modify(columns(key), row, session)
         bindRowList += BindRow(columns(key).name, columns(key).dataType, result)
       } catch {
-        case e: Exception => e.printStackTrace()
+        case e: Exception =>
       }
     })
     bindRowList

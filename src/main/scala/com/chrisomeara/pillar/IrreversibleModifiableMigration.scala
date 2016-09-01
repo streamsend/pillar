@@ -33,6 +33,17 @@ class IrreversibleModifiableMigration(val description: String, val authoredAt: D
     })
   }
 
+  def isContainsBiggerLessThanOperator: Boolean = {
+    mapping.foreach((migrateeTable: MigrateeTable) => {
+      migrateeTable.columns.keySet.foreach((key: String) => {
+        if(migrateeTable.columns(key).modifyOperation.isInstanceOf[CqlStrategy])
+          if(migrateeTable.columns(key).valueSource.contains("<") || migrateeTable.columns(key).valueSource.contains(">"))
+            return false
+       })
+    })
+    true
+  }
+
   override def executeTableStatement(session: Session): Unit = {
     val config = ConfigFactory.load()
     val batchLimit: Int = config.getInt("cassandra-batch-size")
@@ -40,8 +51,12 @@ class IrreversibleModifiableMigration(val description: String, val authoredAt: D
 
     mapping.foreach((migrateeTable: MigrateeTable) => migrateeTable.readColumnsMetadata(session))
 
-    if(fetch.equalsIgnoreCase("eager"))
-      eager(session, fetchLimit)
+    if(fetch.equalsIgnoreCase("eager")) {
+      if(!isContainsBiggerLessThanOperator)
+        println("Eager converted to lazy becaues of < or > operators")
+      else
+        eager(session, fetchLimit)
+    }
 
     primaryKeyNullControl()
 
@@ -68,7 +83,7 @@ class IrreversibleModifiableMigration(val description: String, val authoredAt: D
       }
       //run the batch statement
       session.execute(batchStatement)
-      println("Last Batch has finished")
+      println("Migrations in the file has finished for " + mappingTable.tableName)
     }
   }
 

@@ -25,7 +25,6 @@ object CqlStatement {
         keys += arr(0).trim
         findKeys += arr(1).trim
       }
-      //else if(xx.contains("in"))
     })
 
     val patternForNames = "(select)( )+[a-zA-Z0-9_]+( )+(from)( )+[a-zA-Z0-9_]+( )+".r
