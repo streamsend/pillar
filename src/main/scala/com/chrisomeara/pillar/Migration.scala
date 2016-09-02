@@ -1,7 +1,8 @@
 package com.chrisomeara.pillar
 
 import java.util.Date
-import com.datastax.driver.core.Session
+
+import com.datastax.driver.core._
 import com.datastax.driver.core.querybuilder.QueryBuilder
 
 object Migration {
@@ -9,10 +10,14 @@ object Migration {
     new IrreversibleMigration(description, authoredAt, up)
   }
 
+  def apply(description: String, authoredAt: Date, fetch: String, up: Seq[String], mapping: Seq[MigrateeTable]): Migration = {
+    new IrreversibleModifiableMigration(description, authoredAt, fetch, up, mapping)
+  }
+
   def apply(description: String, authoredAt: Date, up: Seq[String], down: Option[Seq[String]]): Migration = {
     down match {
       case Some(downStatement) =>
-        new ReversibleMigration(description, authoredAt, up, downStatement)
+        new ReversibleMigration(description, authoredAt,  up, downStatement)
       case None =>
         new ReversibleMigrationWithNoOpDown(description, authoredAt, up)
     }
@@ -39,7 +44,8 @@ trait Migration {
     insertIntoAppliedMigrations(session)
   }
 
-  def executeDownStatement(session: Session)
+  def executeDownStatement(session: Session) = {}
+  def executeTableStatement(session: Session): Unit = {}
 
   protected def deleteFromAppliedMigrations(session: Session) {
     session.execute(QueryBuilder.
@@ -61,20 +67,23 @@ trait Migration {
 }
 
 class IrreversibleMigration(val description: String, val authoredAt: Date, val up: Seq[String]) extends Migration {
-  def executeDownStatement(session: Session) {
+  override def executeDownStatement(session: Session) {
     throw new IrreversibleMigrationException(this)
   }
+
 }
 
 class ReversibleMigrationWithNoOpDown(val description: String, val authoredAt: Date, val up: Seq[String]) extends Migration {
-  def executeDownStatement(session: Session) {
+  override def executeDownStatement(session: Session) {
     deleteFromAppliedMigrations(session)
   }
+
 }
 
 class ReversibleMigration(val description: String, val authoredAt: Date, val up: Seq[String], val down: Seq[String]) extends Migration {
-  def executeDownStatement(session: Session) {
+  override def executeDownStatement(session: Session) {
     down.foreach(session.execute)
     deleteFromAppliedMigrations(session)
   }
+
 }

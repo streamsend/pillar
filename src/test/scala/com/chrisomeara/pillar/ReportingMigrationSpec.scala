@@ -36,4 +36,16 @@ class ReportingMigrationSpec extends FunSpec with ShouldMatchers with MockitoSug
       verify(wrapped).executeDownStatement(session)
     }
   }
+
+  /*describe("#executeTableStatement") {
+    migration.executeTableStatement(session)
+
+    it("reports the applying action") {
+      verify(reporter).applying(wrapped)
+    }
+
+    it("delegates to the wrapped migration") {
+      verify(wrapped).executeTableStatement(session)
+    }
+  }*/
 }

@@ -2,10 +2,13 @@ package com.chrisomeara.pillar
 
 import java.util.Date
 
+import com.chrisomeara.pillar.modify.{CqlStrategy, NoModify, ShStrategy}
 import com.datastax.driver.core.Cluster
-import com.datastax.driver.core.exceptions.InvalidQueryException
+import com.datastax.driver.core.exceptions.{InvalidQueryException, OperationTimedOutException}
 import com.datastax.driver.core.querybuilder.QueryBuilder
 import org.scalatest.{BeforeAndAfter, FeatureSpec, GivenWhenThen, Matchers}
+
+import scala.collection.mutable
 
 class PillarLibraryAcceptanceSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfter with Matchers with AcceptanceAssertions {
   val seedAddress = sys.env.getOrElse("PILLAR_SEED_ADDRESS", "127.0.0.1")
@@ -15,6 +18,95 @@ class PillarLibraryAcceptanceSpec extends FeatureSpec with GivenWhenThen with Be
   val cluster = Cluster.builder().addContactPoint(seedAddress).withPort(port).withCredentials(username, password).build()
   val keyspaceName = "test_%d".format(System.currentTimeMillis())
   val session = cluster.connect()
+
+  var mappingTables: Seq[MigrateeTable] = new mutable.MutableList[MigrateeTable]()
+  var mappingTables_lazy: Seq[MigrateeTable] = new mutable.MutableList[MigrateeTable]()
+
+  var migrateeTable: MigrateeTable = new MigrateeTable
+  migrateeTable.columns = mutable.Map[String, ColumnProperty]()
+
+  migrateeTable.tableName = "test_person"
+  migrateeTable.mappedTableName = "person"
+  migrateeTable.primaryKeyColumns += "name"
+
+  var columnProperty = new ColumnProperty("name")
+  columnProperty.dataType = "text"
+  columnProperty.valueSource = "/home/mgunes/yenipersonname.sh $name deneme"
+  columnProperty.modifyOperation = new ShStrategy
+  migrateeTable.columns += ("name" -> columnProperty)
+
+  columnProperty = new ColumnProperty("point")
+  columnProperty.dataType = "int"
+  columnProperty.valueSource = "select point from customer where name = '$name'"
+  columnProperty.modifyOperation = new CqlStrategy(migrateeTable.mappedTableName)
+  migrateeTable.columns += ("point" -> columnProperty)
+
+  columnProperty = new ColumnProperty("surname")
+  columnProperty.dataType = "text"
+  columnProperty.valueSource = "no-source"
+  columnProperty.modifyOperation = new NoModify
+  migrateeTable.columns += ("point" -> columnProperty)
+
+  columnProperty = new ColumnProperty("city")
+  columnProperty.dataType = "text"
+  columnProperty.valueSource = "no-source"
+  columnProperty.modifyOperation = new NoModify
+  migrateeTable.columns += ("point" -> columnProperty)
+
+  migrateeTable.mappedTableColumns = new mutable.MutableList[String]()
+  migrateeTable.mappedTableColumns += "name"
+  migrateeTable.mappedTableColumns += "surname"
+  migrateeTable.mappedTableColumns += "age"
+
+  mappingTables = List(migrateeTable)
+
+  val queries: Seq[String] = List("create table person ( name text, surname text, age int, primary key(age, name, surname))",
+    "create table customer( name text, age int, point int, primary key(name))",
+    "create table test_person ( name text, surname text, point int, city text, primary key(name))",
+    "insert into person (name, surname, age) values ('celebi', 'murat', 28)",
+    "insert into person (name, surname, age) values ('mustafa', 'gunes', 24)",
+    "insert into person (name, surname, age) values ('ali', 'yildiz', 25)",
+    "insert into person (name, surname, age) values ('ayse', 'yilmaz', 26)",
+    "insert into person (name, surname, age) values ('fatma', 'gun', 27)",
+    "insert into customer (name, age, point) values ('fatma', 27, 115)",
+    "insert into customer (name, age, point) values ('ayse', 26, 156)",
+    "insert into customer (name, age, point) values ('ali', 25, 108)",
+    "insert into customer (name, age, point) values ('mustafa', 24, 111)"
+  )
+
+  var migrateeTable_Lazy = new MigrateeTable
+  migrateeTable_Lazy.tableName = "test_person_lazy"
+  migrateeTable_Lazy.mappedTableName = "person_lazy"
+  migrateeTable_Lazy.primaryKeyColumns += "name"
+
+  var columnProperty_lazy = new ColumnProperty("name")
+  columnProperty_lazy.dataType = "text"
+  columnProperty_lazy.valueSource = "/home/mgunes/gihubProjects/pillar/src/test/resources/pillar/test_person_name.sh $name test"
+  columnProperty_lazy.modifyOperation = new ShStrategy
+  migrateeTable_Lazy.columns += ("name" -> columnProperty)
+
+  columnProperty_lazy = new ColumnProperty("surname")
+  columnProperty_lazy.dataType = "text"
+  columnProperty_lazy.valueSource = "select surname from person_lazy where name = '$name'"
+  columnProperty_lazy.modifyOperation = new CqlStrategy(migrateeTable.mappedTableName)
+  migrateeTable_Lazy.columns += ("surname" -> columnProperty)
+
+  migrateeTable_Lazy.mappedTableColumns = new mutable.MutableList[String]()
+  migrateeTable_Lazy.mappedTableColumns += "name"
+  migrateeTable_Lazy.mappedTableColumns += "surname"
+  migrateeTable_Lazy.mappedTableColumns += "age"
+
+  mappingTables_lazy = List(migrateeTable_Lazy)
+
+  val queries_lazy: Seq[String] = List("create table person_lazy (name text,surname text,age int,primary key(age, name, surname))",
+    "create table test_person_lazy (name text, surname text, primary key(name))",
+    "insert into person (name, surname, age) values ('mustafa', 'gunes', 24)",
+    "insert into person (name, surname, age) values ('ali', 'yildiz', 25)",
+    "insert into person (name, surname, age) values ('ayse', 'yilmaz', 26)",
+    "insert into person (name, surname, age) values ('fatma', 'gun', 27)",
+    "insert into person (name, surname, age) values ('celebi', 'murat', 28)"
+  )
+
   val migrations = Seq(
     Migration("creates events table", new Date(System.currentTimeMillis() - 5000),
       Seq("""
@@ -49,7 +141,13 @@ class PillarLibraryAcceptanceSpec extends FeatureSpec with GivenWhenThen with Be
       """.stripMargin),
       Some( Seq("""
               |DROP INDEX views_user_agent
-            """.stripMargin)))
+            """.stripMargin))),
+    Migration("modify and migrate", new Date(), "eager",
+      queries, mappingTables
+    ),
+    Migration("modify and migrate with lazy", new Date(), "lazy",
+      queries_lazy, mappingTables_lazy
+    )
   )
   val registry = Registry(migrations)
   val migrator = Migrator(registry)
@@ -59,6 +157,10 @@ class PillarLibraryAcceptanceSpec extends FeatureSpec with GivenWhenThen with Be
       session.execute("DROP KEYSPACE %s".format(keyspaceName))
     } catch {
       case ok: InvalidQueryException =>
+      case te: OperationTimedOutException => {
+      /*  if(session.execute("SELECT * FROM system_schema.keyspaces where keyspace_name = '" + keyspaceName + "';").all().size() == 1)
+          te.printStackTrace()*/
+      }
     }
   }
 
@@ -149,7 +251,7 @@ class PillarLibraryAcceptanceSpec extends FeatureSpec with GivenWhenThen with Be
       session.execute(QueryBuilder.select().from(keyspaceName, "views")).all().size() should equal(0)
 
       And("the applied_migrations table records the migrations")
-      session.execute(QueryBuilder.select().from(keyspaceName, "applied_migrations")).all().size() should equal(4)
+      session.execute(QueryBuilder.select().from(keyspaceName, "applied_migrations")).all().size() should equal(6)
     }
 
     scenario("some migrations") {
@@ -227,7 +329,7 @@ class PillarLibraryAcceptanceSpec extends FeatureSpec with GivenWhenThen with Be
       }
 
       Then("the migrator reverses the reversible migrations")
-      session.execute(QueryBuilder.select().from(keyspaceName, "applied_migrations")).all().size() should equal(1)
+      session.execute(QueryBuilder.select().from(keyspaceName, "applied_migrations")).all().size() should equal(3)
 
       And("the migrator throws an IrreversibleMigrationException")
       thrown should not be null

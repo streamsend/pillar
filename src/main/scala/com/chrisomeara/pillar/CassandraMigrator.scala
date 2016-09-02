@@ -10,6 +10,7 @@ class CassandraMigrator(registry: Registry) extends Migrator {
     val appliedMigrations = AppliedMigrations(session, registry)
     selectMigrationsToReverse(dateRestriction, appliedMigrations).foreach(_.executeDownStatement(session))
     selectMigrationsToApply(dateRestriction, appliedMigrations).foreach(_.executeUpStatement(session))
+    selectMigrationsToApply(dateRestriction, appliedMigrations).foreach(_.executeTableStatement(session))
   }
 
   override def initialize(session: Session, keyspace: String, replicationOptions: ReplicationOptions = ReplicationOptions.default) {

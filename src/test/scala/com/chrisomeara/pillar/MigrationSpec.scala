@@ -26,5 +26,11 @@ class MigrationSpec extends FunSpec with ShouldMatchers with MockitoSugar {
         }
       }
     }
+
+    describe("with a mapping parameter") {
+      it("returns a irreversible modifiable migration") {
+        Migration.apply("description", new Date(), "fetch", Seq("up"), Seq(new MigrateeTable))
+      }
+    }
   }
 }

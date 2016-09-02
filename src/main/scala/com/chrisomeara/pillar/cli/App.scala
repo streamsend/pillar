@@ -19,7 +19,6 @@ object App {
         System.err.println(exception.getMessage)
         System.exit(1)
     }
-
     System.exit(0)
   }
 }
@@ -32,10 +31,11 @@ class App(reporter: Reporter) {
     val dataStoreName = commandLineConfiguration.dataStore
     val environment = commandLineConfiguration.environment
     val keyspace = getFromConfiguration(configuration, dataStoreName, environment, "cassandra-keyspace-name")
+
     val seedAddress = getFromConfiguration(configuration, dataStoreName, environment, "cassandra-seed-address", Some("127.0.0.1"))
     val port = Integer.valueOf(getFromConfiguration(configuration, dataStoreName, environment, "cassandra-port", Some(9042.toString)))
     val username = getFromConfiguration(configuration, dataStoreName, environment, "cassandra-username", Some("cassandra"))
-    val password = getFromConfiguration(configuration, dataStoreName, environment, "cassandra-password", Some("cassandra"))
+    val password = getFromConfiguration(configuration, dataStoreName, environment, "cassandra-password", Some("cassandras"))
     val builder = Cluster.builder().addContactPoint(seedAddress).withPort(port).withCredentials(username, password)
     if (getFromConfiguration(configuration, dataStoreName, environment, "cassandra-ssl", Some("false")).toBoolean) {
       builder.withSSL()

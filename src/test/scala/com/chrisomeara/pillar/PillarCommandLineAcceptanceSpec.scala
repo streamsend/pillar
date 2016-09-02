@@ -1,11 +1,11 @@
 package com.chrisomeara.pillar
 
-import com.datastax.driver.core.exceptions.InvalidQueryException
-import org.scalatest.{BeforeAndAfter, FeatureSpec, GivenWhenThen}
-import org.scalatest.matchers.ShouldMatchers
-import com.datastax.driver.core.Cluster
-import com.datastax.driver.core.querybuilder.QueryBuilder
 import com.chrisomeara.pillar.cli.App
+import com.datastax.driver.core.Cluster
+import com.datastax.driver.core.exceptions.InvalidQueryException
+import com.datastax.driver.core.querybuilder.QueryBuilder
+import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.{BeforeAndAfter, FeatureSpec, GivenWhenThen}
 
 class PillarCommandLineAcceptanceSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfter with ShouldMatchers with AcceptanceAssertions {
   val seedAddress = sys.env.getOrElse("PILLAR_SEED_ADDRESS", "127.0.0.1")
@@ -62,7 +62,7 @@ class PillarCommandLineAcceptanceSpec extends FeatureSpec with GivenWhenThen wit
       session.execute(QueryBuilder.select().from(keyspaceName, "views")).all().size() should equal(0)
 
       And("the applied_migrations table records the migrations")
-      session.execute(QueryBuilder.select().from(keyspaceName, "applied_migrations")).all().size() should equal(4)
+      session.execute(QueryBuilder.select().from(keyspaceName, "applied_migrations")).all().size() should equal(6)
 
       And("the first migration was authored at Fri May 31 18:01:02 2013")
       session.execute(QueryBuilder.select().from(keyspaceName, "applied_migrations").where(QueryBuilder.eq("authored_at", 1370023262000L))).all().size() should equal(1)
