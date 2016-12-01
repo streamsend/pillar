@@ -31,6 +31,7 @@ object Registry {
     files
       .filterNot(file => file.isDirectory)
       .filter(file => file.exists())
+      .filterNot(file => file.isHidden)
   }
 
   private def parseMigrationsInFiles(files: Seq[File]): Seq[Migration] = {
@@ -54,7 +55,7 @@ object Registry {
     if (!directory.isDirectory)
       return List.empty
 
-    parseMigrationsInFiles(directory.listFiles())
+    parseMigrationsInFiles(filterExisting(directory.listFiles()))
   }
 }
 
