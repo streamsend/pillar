@@ -41,6 +41,9 @@ object Registry {
         val stream = new FileInputStream(file)
         try {
           parser.parse(stream)
+        } catch {
+          case e: Exception =>
+            throw new RuntimeException(s"Error parsing migration file ${file}: ${e.getMessage}", e)
         } finally {
           stream.close()
         }

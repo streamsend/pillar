@@ -64,6 +64,15 @@ class RegistrySpec extends FunSpec with BeforeAndAfter with ShouldMatchers with 
           registry.all.size should equal(0)
         }
       }
+
+      describe("with a file that contains garbage"){
+        it("throws an exception with a meaningful message") {
+          val exception = intercept[RuntimeException] {
+            Registry.fromFiles(Seq(new File("src/test/resources/pillar/migrations/garbage.cql")))
+          }
+          exception.getMessage should equal("Error parsing migration file src/test/resources/pillar/migrations/garbage.cql: Input length = 1")
+        }
+      }
     }
 
     describe("with a reporter parameter") {
