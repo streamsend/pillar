@@ -1,5 +1,7 @@
 # Pillar
 
+[![Maven Central](https://img.shields.io/maven-central/v/com.chrisomeara/pillar_2.12.svg)][pillar_2.12]
+
 Pillar manages migrations for your [Cassandra][cassandra] data stores.
 
 [cassandra]:http://cassandra.apache.org
@@ -24,29 +26,29 @@ databases with one key difference: Pillar is completely independent from any app
 ### From Source
 
 This method requires [Simple Build Tool (sbt)][sbt].
-Building an RPM also requires [Effing Package Management (fpm)][fpm].
 
-    % sbt assembly   # builds just the jar file in the target/ directory
-
-    % sbt rh-package # builds the jar and the RPM in the target/ directory
-    % sudo rpm -i target/pillar-1.0.0-DEV.noarch.rpm
-
-The RPM installs Pillar to /opt/pillar.
+```
+% sbt assembly   # builds a fat jar file in the target/ directory
+```
 
 [sbt]:http://www.scala-sbt.org
-[fpm]:https://github.com/jordansissel/fpm
 
 ### Packages
 
-Pillar is available at Maven Central under the GroupId com.chrisomeara and ArtifactId pillar_2.10 or pillar_2.11. The current version is 2.3.0.
+Pillar is available at Maven Central under the GroupId com.chrisomeara and ArtifactId [pillar_2.10][pillar_2.10],
+[pillar_2.11][pillar_2.11] or [pillar_2.12][pillar_2.12]. The current version is 3.0.0.
 
 #### sbt
 
-  libraryDependencies += "com.chrisomeara" % "pillar_2.10" % "2.3.0"
+```
+libraryDependencies += "com.chrisomeara" %% "pillar" % "3.0.0"
+```
 
 #### Gradle
 
-  compile 'com.chrisomeara:pillar_2.10:2.3.0'
+```
+compile 'com.chrisomeara:pillar_2.12:3.0.0'
+```
 
 ## Usage
 
@@ -69,8 +71,8 @@ Here's the short version:
 
   1. Write migrations, place them in conf/pillar/migrations/myapp.
   1. Add pillar settings to conf/application.conf.
-  1. % pillar -e development initialize myapp
-  1. % pillar -e development migrate myapp
+  1. % pillar initialize -e development myapp
+  1. % pillar migrate -e development myapp
 
 #### Migration Files
 
@@ -179,7 +181,6 @@ application.conf might look like the following:
         acceptance_test {
             cassandra-seed-address: ${?PILLAR_SEED_ADDRESS}
             cassandra-port: ${?PILLAR_PORT}
-            cassandra-keyspace-name: "pillar_acceptance_test"
             cassandra-keyspace-name: ${?PILLAR_KEYSPACE_NAME}
             cassandra-ssl: ${?PILLAR_SSL}
             cassandra-username: ${?PILLAR_USERNAME}
@@ -211,89 +212,62 @@ $JAVA_OPTS are passed through to the JVM when using the pillar executable.
 
 #### The pillar Executable
 
-The package installs to /opt/pillar by default. The /opt/pillar/bin/pillar executable usage looks like this:
+The Pillar executable usage looks like this:
 
-    Usage: pillar [OPTIONS] command data-store
+    Usage: pillar [initialize|migrate] data-store
 
-    OPTIONS
+    Command: initialize [options]
 
-    -d directory
-    --migrations-directory directory  The directory containing migrations
+      -e, --environment <value>
 
-    -e env
-    --environment env                 environment
+    Command: migrate [options]
 
-    -t time
-    --time-stamp time                 The migration time stamp
+      -e, --environment <value>
 
-    PARAMETERS
+      -t, --time-stamp <value>
 
-    command     migrate or initialize
+      -d, --migrations-directory <value>
 
-    data-store  The target data store, as defined in application.conf
+      data-store
 
 #### Examples
 
 Initialize the faker datastore development environment
 
-    % pillar -e development initialize faker
+    % pillar initialize -e development faker
 
 Apply all migrations to the faker datastore development environment
 
-    % pillar -e development migrate faker
+    % pillar migrate -e development faker
 
 ### Library
 
-You can also integrate Pillar directly into your application as a library.
-Reference the acceptance spec suite for details.
+You can also integrate Pillar directly into your application as a library. Reference the [pillar-core][core] repository for
+more information regarding Pillar library integration.
 
-### Forks
+[core]:https://github.com/comeara/pillar-core
+
+## Forks
 
 Several organizations and people have forked the Pillar code base. The most actively maintained alternative is
 the [Galeria-Kaufhof fork][gkf].
 
 [gkf]:https://github.com/Galeria-Kaufhof/pillar
 
-### Release Notes
+## Change Log
 
-#### 1.0.1
+Please reference the [Pillar Changes][changes] document.
 
-* Add a "destroy" method to drop a keyspace (iamsteveholmes)
+[changes]: CHANGES.md
 
-#### 1.0.3
+## Upgrade Instructions
 
-* Clarify documentation (pvenable)
-* Update DataStax Cassandra driver to version 2.0.2 (magro)
-* Update Scala to version 2.10.4 (magro)
-* Add cross-compilation to Scala version 2.11.1 (magro)
-* Shutdown cluster in migrate & initialize (magro)
-* Transition support from StreamSend to Chris O'Meara (comeara)
+Please reference the [Pillar Upgrades][upgrade] document.
 
-#### 2.0.0
+[upgrade]: UPGRADE.md
 
-* Allow configuration of Cassandra port (fkoehler)
-* Rework Migrator interface to allow passing a Session object when integrating Pillar as a library (magro, comeara)
 
-#### 2.0.1
 
-* Update a argot dependency to version 1.0.3 (magro)
-
-#### 2.1.0
-
-* Update DataStax Cassandra driver to version 3.0.0 (MarcoPriebe)
-* Fix documentation issue where authored_at represented as seconds rather than milliseconds (jhungerford)
-* Introduce PILLAR_SEED_ADDRESS environment variable (comeara)
-
-#### 2.1.1
-
-* Fix deduplicate error during merge, ref. issue #32 (ilovezfs)
-
-#### 2.2.0
-
-* Add feature to read registry from files (sadowskik)
-* Add TLS/SSL support(bradhandy, comeara)
-* Add authentication support (bradhandy, comeara)
-
-#### 2.3.0
-
-* Add multiple stages per migration (sadowskik)
+[pillar_2.10]: https://maven-badges.herokuapp.com/maven-central/com.chrisomeara/pillar_2.10
+[pillar_2.11]: https://maven-badges.herokuapp.com/maven-central/com.chrisomeara/pillar_2.11
+[pillar_2.12]: https://maven-badges.herokuapp.com/maven-central/com.chrisomeara/pillar_2.12
