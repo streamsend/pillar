@@ -18,13 +18,16 @@ class PartialMigration {
   var upStages = new mutable.MutableList[String]()
   var downStages : Option[mutable.MutableList[String]] = None
 
-  var currentUp = new mutable.MutableList[String]()
+  var currentUp = new mutable.MutableList[mutable.MutableList[String]]()
   var currentDown: Option[mutable.MutableList[String]] = None
 
+  var lastLine = ""
+
   def rotateUp() = {
-    upStages += currentUp.mkString("\n")
+    upStages ++= currentUp.withFilter(_.nonEmpty).map(_.filter(_.nonEmpty).mkString("\n"))
     upStages = upStages.filterNot(line => line.isEmpty)
-    currentUp = new mutable.MutableList[String]()
+    lastLine = ""
+    currentUp = new mutable.MutableList[mutable.MutableList[String]]()
   }
 
   def rotateDown() = {
@@ -83,6 +86,14 @@ class Parser {
 
   case object ParsingDownStage extends ParserState
 
+  private def parseMultilineStatments(pm: PartialMigration, currentLine : String): Unit = {
+    if(pm.lastLine.trim().isEmpty) pm.currentUp += new mutable.MutableList[String]()
+
+    pm.currentUp.last += currentLine
+
+    pm.lastLine = currentLine
+  }
+
   def parse(resource: InputStream): Migration = {
     val inProgress = new PartialMigration
     var state: ParserState = ParsingAttributes
@@ -105,13 +116,10 @@ class Parser {
           case ParsingDownStage => inProgress.rotateDown(); inProgress.currentDown = Some(new mutable.MutableList[String]())
         }
       case cql =>
-        if (!cql.isEmpty) {
-
-          state match {
-            case ParsingUp | ParsingUpStage => inProgress.currentUp += cql
-            case ParsingDown | ParsingDownStage => inProgress.currentDown.get += cql
-            case other =>
-          }
+        (cql.isEmpty, state) match {
+          case (_, ParsingUp | ParsingUpStage) => parseMultilineStatments(inProgress, cql)
+          case (false, ParsingDown | ParsingDownStage) => inProgress.currentDown.get += cql
+          case other =>
         }
     }
     inProgress.validate match {
