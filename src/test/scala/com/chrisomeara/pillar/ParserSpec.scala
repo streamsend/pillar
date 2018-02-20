@@ -86,6 +86,44 @@ class ParserSpec extends FunSpec with BeforeAndAfter with ShouldMatchers {
       }
     }
 
+    describe("1370028265000_creates_profiles_table.cql") {
+      val migrationPath = "src/test/resources/pillar/migrations/faker/1370028265000_creates_profiles_table.cql"
+
+      it("returns a migration object") {
+        val resource = new FileInputStream(migrationPath)
+        Parser().parse(resource).getClass should be(classOf[IrreversibleMigration])
+      }
+
+      it("assigns authoredAt") {
+        val resource = new FileInputStream(migrationPath)
+        Parser().parse(resource).authoredAt should equal(new Date(1370028265000L))
+      }
+
+      it("assigns description") {
+        val resource = new FileInputStream(migrationPath)
+        Parser().parse(resource).description should equal("creates profiles table and populate")
+      }
+
+      it("creates two up statements from the `up` section") {
+        val resource = new FileInputStream(migrationPath)
+        val migration = Parser().parse(resource)
+
+        migration.up should contain(
+          """CREATE TABLE profiles (
+            |  email text,
+            |  name text,
+            |  address text,
+            |  PRIMARY KEY (email)
+            |)""".stripMargin)
+
+        migration.up should contain(
+          """INSERT INTO profiles(email, name, address) VALUES(
+            |  'rich@yopmail.com',
+            |  'Rich Halle',
+            |  'Schadowstrasse 124; Dusseldorf')""".stripMargin)
+      }
+    }
+
     describe("1370028263000_creates_views_table.cql") {
       val migrationPath = "src/test/resources/pillar/migrations/faker/1370028263000_creates_views_table.cql"
 
